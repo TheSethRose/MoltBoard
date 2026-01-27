@@ -46,7 +46,9 @@ interface TransformedIssue {
   reactions?: number;
 }
 
-function parseGitHubRepoUrl(url: string): { owner: string; repo: string } | null {
+function parseGitHubRepoUrl(
+  url: string,
+): { owner: string; repo: string } | null {
   if (url.includes("github.com/")) {
     const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (match) {
@@ -60,7 +62,11 @@ async function fetchGitHubIssues(
   owner: string,
   repo: string,
   token: string,
-): Promise<{ issues: GitHubIssue[]; rateLimitReset?: number; rateLimitRemaining?: number }> {
+): Promise<{
+  issues: GitHubIssue[];
+  rateLimitReset?: number;
+  rateLimitRemaining?: number;
+}> {
   const allIssues: GitHubIssue[] = [];
   let page = 1;
   const perPage = 100;
@@ -90,18 +96,17 @@ async function fetchGitHubIssues(
       // Rate limited
       const resetTime = rateLimitReset || Date.now() + RATE_LIMIT_BACKOFF_MS;
       globalRateLimitUntil = resetTime;
-      throw Object.assign(
-        new Error("GitHub API rate limit exceeded"),
-        { code: "GITHUB_RATE_LIMIT", resetTime },
-      );
+      throw Object.assign(new Error("GitHub API rate limit exceeded"), {
+        code: "GITHUB_RATE_LIMIT",
+        resetTime,
+      });
     }
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw Object.assign(
-          new Error("GitHub authentication failed"),
-          { code: "GITHUB_AUTH_ERROR" },
-        );
+        throw Object.assign(new Error("GitHub authentication failed"), {
+          code: "GITHUB_AUTH_ERROR",
+        });
       }
       if (response.status === 404) {
         throw Object.assign(
@@ -130,7 +135,9 @@ async function fetchGitHubIssues(
 
     // Stop early if we're running low on rate limit
     if (rateLimitRemaining !== undefined && rateLimitRemaining < 10) {
-      console.warn(`[github-issues] Low rate limit (${rateLimitRemaining}), stopping pagination early`);
+      console.warn(
+        `[github-issues] Low rate limit (${rateLimitRemaining}), stopping pagination early`,
+      );
       break;
     }
   }
@@ -183,7 +190,10 @@ export const GET = withErrorHandling(
         | undefined;
 
       if (!project) {
-        throw notFound(`Project with id ${projectId} not found`, "PROJECT_NOT_FOUND");
+        throw notFound(
+          `Project with id ${projectId} not found`,
+          "PROJECT_NOT_FOUND",
+        );
       }
 
       if (!project.github_repo_url) {
@@ -195,7 +205,10 @@ export const GET = withErrorHandling(
 
       const parsed = parseGitHubRepoUrl(project.github_repo_url);
       if (!parsed) {
-        throw badRequest("Could not parse GitHub repository URL", "INVALID_GITHUB_URL");
+        throw badRequest(
+          "Could not parse GitHub repository URL",
+          "INVALID_GITHUB_URL",
+        );
       }
 
       const { owner, repo } = parsed;
@@ -227,7 +240,11 @@ export const GET = withErrorHandling(
       const allIssues: TransformedIssue[] = [];
 
       try {
-        const { issues, rateLimitReset } = await fetchGitHubIssues(owner, repo, githubToken);
+        const { issues, rateLimitReset } = await fetchGitHubIssues(
+          owner,
+          repo,
+          githubToken,
+        );
         const transformed = issues.map((issue) => ({
           number: issue.number,
           title: issue.title,
@@ -273,7 +290,9 @@ export const GET = withErrorHandling(
               allIssues.push(...parentTransformed);
             } catch (parentErr) {
               // Don't fail if parent repo fetch fails, just log it
-              console.warn(`[github-issues] Failed to fetch parent repo issues: ${(parentErr as Error).message}`);
+              console.warn(
+                `[github-issues] Failed to fetch parent repo issues: ${(parentErr as Error).message}`,
+              );
             }
           }
         }

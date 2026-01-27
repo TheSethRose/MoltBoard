@@ -42,7 +42,11 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
 }
 
 // Use shared GitHub utility with rate limiting
-async function fetchRepoMetadataSafe(owner: string, repo: string, token: string) {
+async function fetchRepoMetadataSafe(
+  owner: string,
+  repo: string,
+  token: string,
+) {
   const result = await fetchRepoMetadataWithRateLimit(owner, repo, token);
   return result.data; // Returns null on error/rate limit, which is graceful
 }

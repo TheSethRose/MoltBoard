@@ -6,8 +6,8 @@
 # Crontab entry:
 #   */3 * * * * /path/to/cron-worker.sh >> /tmp/cron-worker.log 2>&1
 #
-# Or with clawdbot cron:
-#   clawdbot cron add "moltboard-worker" "*/3 * * * *" "./skills/task-manager/scripts/cron-worker.sh"
+# Or with moltbot cron:
+#   moltbot cron add "moltboard-worker" "*/3 * * * *" "./skills/task-manager/scripts/cron-worker.sh"
 
 set -e
 

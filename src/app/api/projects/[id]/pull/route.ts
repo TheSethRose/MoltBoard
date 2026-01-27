@@ -86,7 +86,10 @@ export const POST = withErrorHandling(
       if (error instanceof Error && error.name === "ApiError") {
         throw error;
       }
-      logError(error as Error, { route: "/api/projects/[id]/pull", method: "POST" });
+      logError(error as Error, {
+        route: "/api/projects/[id]/pull",
+        method: "POST",
+      });
       throw databaseError(error);
     }
   },

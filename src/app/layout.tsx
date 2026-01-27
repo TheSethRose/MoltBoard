@@ -21,7 +21,7 @@ const inter = Inter({
 const isDevelopment = process.env.NODE_ENV === "development";
 
 export const metadata: Metadata = {
-  title: "Clawd Dashboard",
+  title: "Molt Dashboard",
   description: "Task management and system monitoring",
   icons: {
     icon: isDevelopment ? "/favicon-dev.svg" : "/favicon-prod.svg",

@@ -148,7 +148,9 @@ export default function ProjectDetailClient({
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // GitHub availability state (for the small status indicator)
-  const [githubStatus, setGithubStatus] = useState<"idle" | "loading" | "available" | "unavailable">("idle");
+  const [githubStatus, setGithubStatus] = useState<
+    "idle" | "loading" | "available" | "unavailable"
+  >("idle");
   const [githubRetryAfter, setGithubRetryAfter] = useState<number | null>(null);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [issueQuery, setIssueQuery] = useState("");
@@ -298,13 +300,11 @@ export default function ProjectDetailClient({
     switch (issueSortBy) {
       case "created":
         diff =
-          new Date(a.created_at).getTime() -
-          new Date(b.created_at).getTime();
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         break;
       case "updated":
         diff =
-          new Date(a.updated_at).getTime() -
-          new Date(b.updated_at).getTime();
+          new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
         break;
       case "comments":
         diff = (a.comments || 0) - (b.comments || 0);
@@ -629,7 +629,7 @@ export default function ProjectDetailClient({
     if (hasFetchedOnce) return;
     if (isLoadingIssues) return;
     fetchGitHubIssues();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.github_repo_url]);
 
   if (projectError) {
@@ -648,8 +648,9 @@ export default function ProjectDetailClient({
         return `~/${parts.slice(3).join("/")}`;
       }
     }
-    return localPath.replace(/^(\/Users\/[^/]+)(\/?.*)$/, (_, _home, rest) =>
-      `~${rest || ""}`,
+    return localPath.replace(
+      /^(\/Users\/[^/]+)(\/?.*)$/,
+      (_, _home, rest) => `~${rest || ""}`,
     );
   };
 
@@ -680,7 +681,11 @@ export default function ProjectDetailClient({
               <Badge variant="secondary">
                 {tasks.length} task{tasks.length !== 1 ? "s" : ""}
               </Badge>
-              {project?.local_only ? <Badge>Local Only</Badge> : <Badge>Cloud</Badge>}
+              {project?.local_only ? (
+                <Badge>Local Only</Badge>
+              ) : (
+                <Badge>Cloud</Badge>
+              )}
             </div>
           </div>
           {project?.description && (
@@ -752,12 +757,17 @@ export default function ProjectDetailClient({
             <button
               type="button"
               onClick={handleGitHubRetry}
-              disabled={isLoadingIssues || (githubRetryAfter !== null && Date.now() < githubRetryAfter)}
+              disabled={
+                isLoadingIssues ||
+                (githubRetryAfter !== null && Date.now() < githubRetryAfter)
+              }
               className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
             >
-              {isLoadingIssues ? "..." : githubRetryAfter && Date.now() < githubRetryAfter
-                ? `Retry in ${Math.ceil((githubRetryAfter - Date.now()) / 1000)}s`
-                : "Retry"}
+              {isLoadingIssues
+                ? "..."
+                : githubRetryAfter && Date.now() < githubRetryAfter
+                  ? `Retry in ${Math.ceil((githubRetryAfter - Date.now()) / 1000)}s`
+                  : "Retry"}
             </button>
           </div>
         )}
@@ -773,17 +783,22 @@ export default function ProjectDetailClient({
             Import Github Issues
           </Button>
         )}
-        {project?.github_repo_url && project?.local_path && !project.local_only && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePullLatest}
-            disabled={isPulling}
-          >
-            <RefreshCw size={14} className={isPulling ? "mr-2 animate-spin" : "mr-2"} />
-            Pull Latest
-          </Button>
-        )}
+        {project?.github_repo_url &&
+          project?.local_path &&
+          !project.local_only && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePullLatest}
+              disabled={isPulling}
+            >
+              <RefreshCw
+                size={14}
+                className={isPulling ? "mr-2 animate-spin" : "mr-2"}
+              />
+              Pull Latest
+            </Button>
+          )}
         <Button
           variant="outline"
           size="sm"
@@ -840,7 +855,9 @@ export default function ProjectDetailClient({
             >
               <span>
                 GitHub is currently unavailable.
-                {githubIssues.length > 0 ? " Showing cached issues." : " Please try again later."}
+                {githubIssues.length > 0
+                  ? " Showing cached issues."
+                  : " Please try again later."}
               </span>
               <Button
                 variant="outline"
@@ -916,11 +933,13 @@ export default function ProjectDetailClient({
                     State
                   </Label>
                   <div className="flex flex-wrap gap-2">
-                    {([
-                      { key: "all", label: "All" },
-                      { key: "open", label: "Open" },
-                      { key: "closed", label: "Closed" },
-                    ] as const).map((option) => (
+                    {(
+                      [
+                        { key: "all", label: "All" },
+                        { key: "open", label: "Open" },
+                        { key: "closed", label: "Closed" },
+                      ] as const
+                    ).map((option) => (
                       <button
                         key={option.key}
                         type="button"
@@ -945,11 +964,13 @@ export default function ProjectDetailClient({
                     Assignee
                   </Label>
                   <div className="flex flex-wrap gap-2">
-                    {([
-                      { key: "all", label: "All" },
-                      { key: "assigned", label: "Assigned" },
-                      { key: "unassigned", label: "Unassigned" },
-                    ] as const).map((option) => (
+                    {(
+                      [
+                        { key: "all", label: "All" },
+                        { key: "assigned", label: "Assigned" },
+                        { key: "unassigned", label: "Unassigned" },
+                      ] as const
+                    ).map((option) => (
                       <button
                         key={option.key}
                         type="button"
@@ -1056,10 +1077,12 @@ export default function ProjectDetailClient({
                       <option value="reactions"># Reactions</option>
                     </select>
                     <div className="flex flex-wrap gap-2">
-                      {([
-                        { key: "newest", label: "Newest" },
-                        { key: "oldest", label: "Oldest" },
-                      ] as const).map((option) => (
+                      {(
+                        [
+                          { key: "newest", label: "Newest" },
+                          { key: "oldest", label: "Oldest" },
+                        ] as const
+                      ).map((option) => (
                         <button
                           key={option.key}
                           type="button"
@@ -1079,7 +1102,6 @@ export default function ProjectDetailClient({
                   </div>
                 </div>
               </div>
-
             </div>
 
             {/* Right column: Issues list */}
@@ -1095,7 +1117,10 @@ export default function ProjectDetailClient({
                     className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                     aria-label="Refresh issues"
                   >
-                    <RefreshCw size={12} className={isLoadingIssues ? "animate-spin" : ""} />
+                    <RefreshCw
+                      size={12}
+                      className={isLoadingIssues ? "animate-spin" : ""}
+                    />
                   </button>
                 </div>
                 <span className="text-xs text-muted-foreground">
@@ -1216,9 +1241,14 @@ export default function ProjectDetailClient({
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1">
-                                <User size={12} className="text-muted-foreground" />
+                                <User
+                                  size={12}
+                                  className="text-muted-foreground"
+                                />
                                 <span>
-                                  {issue.assignee ? issue.assignee : "Unassigned"}
+                                  {issue.assignee
+                                    ? issue.assignee
+                                    : "Unassigned"}
                                 </span>
                               </div>
                               {typeof issue.comments === "number" && (
@@ -1252,7 +1282,8 @@ export default function ProjectDetailClient({
                                     key={label}
                                     className="text-[10px] px-1.5 py-0.5 rounded"
                                     style={{
-                                      backgroundColor: "rgba(148, 163, 184, 0.16)",
+                                      backgroundColor:
+                                        "rgba(148, 163, 184, 0.16)",
                                       color: "var(--muted-foreground)",
                                     }}
                                   >
@@ -1273,10 +1304,12 @@ export default function ProjectDetailClient({
                               {issue.title}
                             </div>
                             <div className="text-xs text-muted-foreground mb-2">
-                              #{issue.number} · {issue.repo_full_name} · {issue.state}
+                              #{issue.number} · {issue.repo_full_name} ·{" "}
+                              {issue.state}
                             </div>
                             <div className="text-xs text-muted-foreground mb-2">
-                              Assignee: {issue.assignee ? issue.assignee : "Unassigned"}
+                              Assignee:{" "}
+                              {issue.assignee ? issue.assignee : "Unassigned"}
                               {typeof issue.comments === "number" && (
                                 <span> · {issue.comments} comments</span>
                               )}

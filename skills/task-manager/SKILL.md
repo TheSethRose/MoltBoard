@@ -9,13 +9,13 @@ SQLite-backed task management at `~/workspace/data/tasks.db`.
 
 ## Status Legend
 
-| Mark | Status | Meaning |
-|------|--------|---------|
-| `[~]` | BACKLOG | Not ready, waiting to be prioritized |
-| `[ ]` | READY | Actionable now |
-| `[*]` | IN-PROGRESS | Currently working |
-| `[x]` | COMPLETED | Done |
-| `[!]` | BLOCKED | Cannot proceed (has dependencies) |
+| Mark  | Status      | Meaning                              |
+| ----- | ----------- | ------------------------------------ |
+| `[~]` | BACKLOG     | Not ready, waiting to be prioritized |
+| `[ ]` | READY       | Actionable now                       |
+| `[*]` | IN-PROGRESS | Currently working                    |
+| `[x]` | COMPLETED   | Done                                 |
+| `[!]` | BLOCKED     | Cannot proceed (has dependencies)    |
 
 ## CLI Commands
 
@@ -84,12 +84,12 @@ Returns: `Backlog: N | Ready: N | In Progress: N | Completed: N | Blocked: N`
 
 ## Cron Jobs
 
-Set up using Clawdbot cron. See [Clawdbot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs).
+Set up using MoltBot cron. See [MoltBot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs).
 
 ### Task Worker (every 3 minutes)
 
 ```bash
-clawdbot cron add "moltboard-worker" "*/3 * * * *" \
+moltbot cron add "moltboard-worker" "*/3 * * * *" \
     "./skills/task-manager/scripts/cron-worker.sh"
 ```
 
@@ -98,7 +98,7 @@ Picks up Ready tasks and processes them one at a time.
 ### Project Sync (every 15 minutes)
 
 ```bash
-clawdbot cron add "moltboard-sync" "*/15 * * * *" \
+moltbot cron add "moltboard-sync" "*/15 * * * *" \
     "bun ./skills/task-manager/scripts/project-sync-cron.js"
 ```
 

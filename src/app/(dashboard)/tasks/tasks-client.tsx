@@ -24,7 +24,6 @@ import {
   ChevronDown,
   AlignLeft,
   CircleDot,
-  Hash,
   Link2,
   Tag,
   Type,

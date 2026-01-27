@@ -1,6 +1,6 @@
 #!/bin/bash
 # PHASE 0: GLOBAL DATA RECOVERY (Safety Preamble)
-# Target: ClawdVM-MacOS-Backup (Recovery Repo)
+# Target: MoltVM-MacOS-Backup (Recovery Repo)
 # Action: Capture entire ~/workspace state
 # Trigger: Cron (every 3m) - runs BEFORE recurring-work.js
 #

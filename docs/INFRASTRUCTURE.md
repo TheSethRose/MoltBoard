@@ -132,20 +132,20 @@ const POOL_SIZE = 5;
 const pool: Database[] = [];
 
 export function getDb(): Database {
-    if (pool.length > 0) {
-        return pool.pop()!;
-    }
-    const db = new Database(getDatabasePath());
-    db.pragma('journal_mode = WAL');
-    return db;
+  if (pool.length > 0) {
+    return pool.pop()!;
+  }
+  const db = new Database(getDatabasePath());
+  db.pragma("journal_mode = WAL");
+  return db;
 }
 
 export function releaseDb(db: Database): void {
-    if (pool.length < POOL_SIZE) {
-        pool.push(db);
-    } else {
-        db.close();
-    }
+  if (pool.length < POOL_SIZE) {
+    pool.push(db);
+  } else {
+    db.close();
+  }
 }
 ```
 
@@ -158,19 +158,19 @@ Uses Octokit for GitHub API access with built-in rate limiting awareness.
 ```typescript
 // Rate limit handling
 interface RateLimitInfo {
-    remaining: number;
-    reset: Date;
-    limit: number;
+  remaining: number;
+  reset: Date;
+  limit: number;
 }
 
 // Issue sync flow
 async function syncGitHubIssues(projectId: number): Promise<SyncResult> {
-    // 1. Get project with GitHub settings
-    // 2. Fetch issues from GitHub API
-    // 3. Match with existing tasks by github_issue_id
-    // 4. Create new tasks for new issues
-    // 5. Update existing tasks if issue changed
-    // 6. Optionally close tasks for closed issues
+  // 1. Get project with GitHub settings
+  // 2. Fetch issues from GitHub API
+  // 3. Match with existing tasks by github_issue_id
+  // 4. Create new tasks for new issues
+  // 5. Update existing tasks if issue changed
+  // 6. Optionally close tasks for closed issues
 }
 ```
 
@@ -180,11 +180,11 @@ Projects can configure selective issue sync:
 
 ```json
 {
-    "syncEnabled": true,
-    "syncLabels": ["bug", "enhancement"],
-    "syncAssignees": ["username"],
-    "autoCloseOnRemote": false,
-    "createLocalTasks": true
+  "syncEnabled": true,
+  "syncLabels": ["bug", "enhancement"],
+  "syncAssignees": ["username"],
+  "autoCloseOnRemote": false,
+  "createLocalTasks": true
 }
 ```
 
@@ -202,28 +202,30 @@ MoltBoard resolves the workspace directory in this order:
 
 ```typescript
 const CONFIG_PATHS = [
-    path.join(homedir(), '.clawdbot', 'clawdbot.json'), // Current
-    path.join(homedir(), '.moltbot', 'moltbot.json'),   // Future
+  path.join(homedir(), ".clawdbot", "clawdbot.json"), // Current
+  path.join(homedir(), ".moltbot", "moltbot.json"), // Future
 ];
 
 export function getWorkspacePath(): string {
-    // 1. Check environment variables first
-    const env = process.env.MOLTBOT_WORKSPACE || process.env.WORKSPACE_DIR;
-    if (env?.trim()) return env.trim();
+  // 1. Check environment variables first
+  const env = process.env.MOLTBOT_WORKSPACE || process.env.WORKSPACE_DIR;
+  if (env?.trim()) return env.trim();
 
-    // 2. Check config files
-    for (const configPath of CONFIG_PATHS) {
-        try {
-            if (fs.existsSync(configPath)) {
-                const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                const workspace = data?.agents?.defaults?.workspace;
-                if (workspace?.trim()) return workspace.trim();
-            }
-        } catch { /* continue */ }
+  // 2. Check config files
+  for (const configPath of CONFIG_PATHS) {
+    try {
+      if (fs.existsSync(configPath)) {
+        const data = JSON.parse(fs.readFileSync(configPath, "utf8"));
+        const workspace = data?.agents?.defaults?.workspace;
+        if (workspace?.trim()) return workspace.trim();
+      }
+    } catch {
+      /* continue */
     }
+  }
 
-    // 3. Fallback to default
-    return path.join(homedir(), 'workspace');
+  // 3. Fallback to default
+  return path.join(homedir(), "workspace");
 }
 ```
 
@@ -289,35 +291,29 @@ All API routes use a unified error handler:
 ```typescript
 // src/lib/api-error-handler.ts
 export function withErrorHandling(
-    handler: () => Promise<NextResponse>,
-    options: { context: { route: string; method: string } }
+  handler: () => Promise<NextResponse>,
+  options: { context: { route: string; method: string } },
 ): () => Promise<NextResponse> {
-    return async () => {
-        try {
-            return await handler();
-        } catch (error) {
-            logError(error, options.context);
+  return async () => {
+    try {
+      return await handler();
+    } catch (error) {
+      logError(error, options.context);
 
-            if (error instanceof ValidationError) {
-                return NextResponse.json(
-                    { error: error.message },
-                    { status: 400 }
-                );
-            }
+      if (error instanceof ValidationError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
 
-            if (error instanceof DatabaseError) {
-                return NextResponse.json(
-                    { error: 'Database error' },
-                    { status: 500 }
-                );
-            }
+      if (error instanceof DatabaseError) {
+        return NextResponse.json({ error: "Database error" }, { status: 500 });
+      }
 
-            return NextResponse.json(
-                { error: 'Internal server error' },
-                { status: 500 }
-            );
-        }
-    };
+      return NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 },
+      );
+    }
+  };
 }
 ```
 
@@ -328,22 +324,22 @@ Input validation using TypeScript types:
 ```typescript
 // Task creation validation
 interface CreateTaskInput {
-    text: string;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    tags?: string[];
-    project_id?: number;
+  text: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  tags?: string[];
+  project_id?: number;
 }
 
 // Validated at runtime in API routes
 function validateTaskInput(body: unknown): CreateTaskInput {
-    if (!body || typeof body !== 'object') {
-        throw new ValidationError('Invalid request body');
-    }
-    if (!('text' in body) || typeof body.text !== 'string') {
-        throw new ValidationError('Task text is required');
-    }
-    // ... additional validation
+  if (!body || typeof body !== "object") {
+    throw new ValidationError("Invalid request body");
+  }
+  if (!("text" in body) || typeof body.text !== "string") {
+    throw new ValidationError("Task text is required");
+  }
+  // ... additional validation
 }
 ```
 
@@ -360,30 +356,30 @@ Direct database access for command-line task management:
 ```javascript
 // Usage patterns
 const commands = {
-    list: (filter) => {
-        // SELECT with optional WHERE clause
-        // Format output with status markers
-    },
-    add: (text, status) => {
-        // INSERT new task
-        // Return task ID
-    },
-    update: (pattern, status) => {
-        // Find by text pattern or ID
-        // UPDATE status
-    },
-    complete: (pattern) => {
-        // Mark as completed
-        // Update tasks blocked by this one
-    },
-    delete: (pattern) => {
-        // Remove task
-        // Cascade blocked_by references
-    },
-    count: () => {
-        // GROUP BY status
-        // Return counts
-    }
+  list: (filter) => {
+    // SELECT with optional WHERE clause
+    // Format output with status markers
+  },
+  add: (text, status) => {
+    // INSERT new task
+    // Return task ID
+  },
+  update: (pattern, status) => {
+    // Find by text pattern or ID
+    // UPDATE status
+  },
+  complete: (pattern) => {
+    // Mark as completed
+    // Update tasks blocked by this one
+  },
+  delete: (pattern) => {
+    // Remove task
+    // Cascade blocked_by references
+  },
+  count: () => {
+    // GROUP BY status
+    // Return counts
+  },
 };
 ```
 
@@ -440,24 +436,30 @@ Automated GitHub synchronization:
 ```javascript
 // Runs every 15 minutes
 async function syncAllProjects() {
-    const projects = db.prepare(`
+  const projects = db
+    .prepare(
+      `
         SELECT id, name, github_repo_url
         FROM projects
         WHERE github_repo_url IS NOT NULL
-    `).all();
+    `,
+    )
+    .all();
 
-    for (const project of projects) {
-        try {
-            const response = await fetch(
-                `http://localhost:5000/api/projects/${project.id}/sync`,
-                { method: 'POST' }
-            );
-            const result = await response.json();
-            log(`${project.name}: ${result.created} created, ${result.updated} updated`);
-        } catch (error) {
-            log(`${project.name}: sync failed - ${error.message}`);
-        }
+  for (const project of projects) {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/projects/${project.id}/sync`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+      log(
+        `${project.name}: ${result.created} created, ${result.updated} updated`,
+      );
+    } catch (error) {
+      log(`${project.name}: sync failed - ${error.message}`);
     }
+  }
 }
 ```
 
@@ -472,31 +474,29 @@ Uses SWR for data fetching with optimistic updates:
 ```typescript
 // src/app/(dashboard)/tasks/lib/use-tasks.ts
 export function useTasks() {
-    const { data, error, mutate } = useSWR<Task[]>(
-        '/api/tasks',
-        fetcher,
-        { refreshInterval: 10000 }
+  const { data, error, mutate } = useSWR<Task[]>("/api/tasks", fetcher, {
+    refreshInterval: 10000,
+  });
+
+  const updateTask = async (id: number, updates: Partial<Task>) => {
+    // Optimistic update
+    mutate(
+      (tasks) => tasks?.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+      false,
     );
 
-    const updateTask = async (id: number, updates: Partial<Task>) => {
-        // Optimistic update
-        mutate(
-            tasks => tasks?.map(t => t.id === id ? { ...t, ...updates } : t),
-            false
-        );
+    try {
+      await fetch("/api/tasks", {
+        method: "PUT",
+        body: JSON.stringify({ id, ...updates }),
+      });
+      mutate(); // Revalidate
+    } catch {
+      mutate(); // Rollback on error
+    }
+  };
 
-        try {
-            await fetch('/api/tasks', {
-                method: 'PUT',
-                body: JSON.stringify({ id, ...updates })
-            });
-            mutate(); // Revalidate
-        } catch {
-            mutate(); // Rollback on error
-        }
-    };
-
-    return { tasks: data, error, updateTask };
+  return { tasks: data, error, updateTask };
 }
 ```
 
@@ -528,19 +528,19 @@ Tailwind CSS 4 with CSS variables for theming:
 ```css
 /* src/app/globals.css */
 :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    /* ... */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  /* ... */
 }
 
 .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    /* ... */
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  /* ... */
 }
 ```
 
@@ -639,6 +639,7 @@ Create a LaunchAgent plist:
 ```
 
 Install:
+
 ```bash
 cp com.moltboard.dashboard.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.moltboard.dashboard.plist
@@ -703,6 +704,7 @@ curl http://localhost:5000/api/status/database
 ### Metrics
 
 Access `/api/metrics` for:
+
 - Task completion history (7 days)
 - Daily task counts
 - Status distribution

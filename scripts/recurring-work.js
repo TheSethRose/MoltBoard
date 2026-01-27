@@ -79,7 +79,11 @@ function parseRateLimitHeaders(headers) {
     githubRateLimitRemaining = parseInt(remaining, 10);
   }
 
-  if (reset !== null && githubRateLimitRemaining !== null && githubRateLimitRemaining <= 0) {
+  if (
+    reset !== null &&
+    githubRateLimitRemaining !== null &&
+    githubRateLimitRemaining <= 0
+  ) {
     githubRateLimitUntil = parseInt(reset, 10) * 1000;
   }
 }
@@ -375,9 +379,10 @@ async function runGitHubSync() {
       }
     }
 
-    const statusMsg = rateLimited > 0
-      ? `GitHub sync paused (rate limited): ${totalCreated} created, ${totalUpdated} updated, ${errors} errors, ${rateLimited} skipped`
-      : `GitHub sync complete: ${totalCreated} created, ${totalUpdated} updated, ${errors} errors`;
+    const statusMsg =
+      rateLimited > 0
+        ? `GitHub sync paused (rate limited): ${totalCreated} created, ${totalUpdated} updated, ${errors} errors, ${rateLimited} skipped`
+        : `GitHub sync complete: ${totalCreated} created, ${totalUpdated} updated, ${errors} errors`;
     log("info", statusMsg);
   } finally {
     db.close();

@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectDeleteDialog } from "@/components/ui/project-delete-dialog";
-import { cn } from "@/lib/utils";
 import { Clock, Trash2, Github, Loader2 } from "lucide-react";
 import {
   Dialog,

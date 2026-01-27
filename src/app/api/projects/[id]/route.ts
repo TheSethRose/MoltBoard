@@ -98,7 +98,11 @@ async function cloneRepo(owner: string, repo: string, localPath: string) {
 }
 
 // Use shared GitHub utility with rate limiting
-async function fetchRepoMetadataSafe(owner: string, repo: string, token: string) {
+async function fetchRepoMetadataSafe(
+  owner: string,
+  repo: string,
+  token: string,
+) {
   const result = await fetchRepoMetadataWithRateLimit(owner, repo, token);
   return result.data; // Returns null on error/rate limit, which is graceful
 }

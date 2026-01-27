@@ -92,7 +92,6 @@ function parseRateLimitHeaders(headers: Headers): void {
 async function githubFetch<T>(
   url: string,
   token: string,
-  options: { skipCache?: boolean } = {},
 ): Promise<GitHubApiResult<T>> {
   // Check rate limit before making request
   if (isRateLimited()) {
@@ -176,7 +175,9 @@ async function githubFetch<T>(
         data: null,
         error: {
           code: "API_ERROR",
-          message: (errorData as { message?: string }).message || `GitHub API error: ${response.status}`,
+          message:
+            (errorData as { message?: string }).message ||
+            `GitHub API error: ${response.status}`,
         },
         cached: false,
         rateLimited: false,
@@ -374,7 +375,11 @@ export function clearCache(): void {
 /**
  * Get cache stats (for debugging)
  */
-export function getCacheStats(): { size: number; rateLimited: boolean; retryAfter: number | null } {
+export function getCacheStats(): {
+  size: number;
+  rateLimited: boolean;
+  retryAfter: number | null;
+} {
   return {
     size: repoMetadataCache.size,
     rateLimited: isRateLimited(),

@@ -62,49 +62,6 @@ function normalizeSelections(
   return results;
 }
 
-async function fetchAllIssues(
-  owner: string,
-  repo: string,
-  token: string,
-): Promise<GitHubIssue[]> {
-  const allIssues: GitHubIssue[] = [];
-  let page = 1;
-  const perPage = 100;
-  let hasMore = true;
-
-  while (hasMore && page <= 10) {
-    const issuesResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues?state=all&per_page=${perPage}&page=${page}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      },
-    );
-
-    if (!issuesResponse.ok) {
-      const errorData = await issuesResponse.json();
-      throw badRequest(
-        `GitHub API error: ${errorData.message || "Unknown error"}`,
-        "GITHUB_API_ERROR",
-      );
-    }
-
-    const pageIssues = (await issuesResponse.json()) as GitHubIssue[];
-    const issuesOnly = pageIssues.filter((issue) => !issue.pull_request);
-    allIssues.push(...issuesOnly);
-
-    if (pageIssues.length < perPage) {
-      hasMore = false;
-    }
-    page++;
-  }
-
-  return allIssues;
-}
-
 async function fetchIssueByNumber(
   owner: string,
   repo: string,
@@ -169,6 +126,20 @@ export const GET = withErrorHandling(
           "Project does not have a GitHub repository configured",
           "NO_GITHUB_REPO",
         );
+      }
+
+      const syncEnabled =
+        process.env.GITHUB_ISSUE_SYNC_ENABLED?.toLowerCase() === "true";
+
+      if (!syncEnabled) {
+        releaseDb(db);
+        return NextResponse.json({
+          success: false,
+          disabled: true,
+          message:
+            "Automatic GitHub issue re-sync is disabled. Set GITHUB_ISSUE_SYNC_ENABLED=true to enable.",
+          project: { id: project.id, name: project.name },
+        });
       }
 
       // Parse GitHub repo URL to get owner and repo
@@ -582,10 +553,12 @@ async function syncIssueToTask(
   const priority = "medium";
   const details = body.trim();
 
-  const columns = db
-    .prepare("PRAGMA table_info(tasks)")
-    .all() as { name: string }[];
-  const hasIssueRepoColumn = columns.some((col) => col.name === "github_issue_repo");
+  const columns = db.prepare("PRAGMA table_info(tasks)").all() as {
+    name: string;
+  }[];
+  const hasIssueRepoColumn = columns.some(
+    (col) => col.name === "github_issue_repo",
+  );
 
   // Check if task with this github_issue_id exists
   const existingTask = hasIssueRepoColumn
@@ -620,14 +593,14 @@ async function syncIssueToTask(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
-        ).run(
-          title,
-          details,
-          JSON.stringify(labels),
-          priority,
-          repoFullName,
-          existingTask.id,
-        );
+      ).run(
+        title,
+        details,
+        JSON.stringify(labels),
+        priority,
+        repoFullName,
+        existingTask.id,
+      );
     } else {
       db.prepare(
         `
@@ -645,7 +618,7 @@ async function syncIssueToTask(
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
-        ).run(title, details, JSON.stringify(labels), priority, existingTask.id);
+      ).run(title, details, JSON.stringify(labels), priority, existingTask.id);
     }
     return "updated";
   } else {
@@ -673,7 +646,7 @@ async function syncIssueToTask(
         title,
         status,
         JSON.stringify(labels),
-      priority,
+        priority,
         sortOrder,
         details,
         taskNumber,
@@ -691,7 +664,7 @@ async function syncIssueToTask(
         title,
         status,
         JSON.stringify(labels),
-      priority,
+        priority,
         sortOrder,
         details,
         taskNumber,

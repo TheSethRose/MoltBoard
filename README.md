@@ -18,7 +18,7 @@ MoltBoard is designed to run locally on your development machine, giving you ful
 
 - **Bun** 1.0+ ([install](https://bun.sh))
 - **GitHub Personal Access Token** (for GitHub integration features)
-- **Clawdbot** (for automated task processing)
+- **MoltBot** (for automated task processing)
 
 ## Quick Start
 
@@ -60,6 +60,9 @@ GITHUB_OWNER=your_github_username
 # Optional: Defaults shown
 DATABASE_URL=./data/tasks.db
 NEXT_PUBLIC_APP_URL=http://localhost:5000
+
+# Optional: Disable automatic GitHub issue re-sync (default is disabled)
+GITHUB_ISSUE_SYNC_ENABLED=false
 ```
 
 ### GitHub Token Setup
@@ -71,7 +74,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:5000
 
 ### Workspace Configuration
 
-MoltBoard reads your workspace path from the Clawdbot configuration file. If you have Clawdbot installed, this file should already exist:
+MoltBoard reads your workspace path from the MoltBot configuration file. If you have MoltBot installed, this file should already exist:
 
 ```bash
 # Check if config exists
@@ -93,13 +96,14 @@ The workspace path is read from `agents.defaults.workspace`:
 > **Note:** The config location may change to `~/.moltbot/moltbot.json` in future versions. MoltBoard will check both locations.
 
 Alternatively, set the environment variable:
+
 ```bash
 export MOLTBOT_WORKSPACE=/path/to/your/workspace
 ```
 
 ## Agent Task Processing
 
-MoltBoard is designed to work with Clawdbot's cron system for automated task processing. When configured, the agent will:
+MoltBoard is designed to work with MoltBot's cron system for automated task processing. When configured, the agent will:
 
 1. Pick up tasks in **Ready** status
 2. Work on them one at a time
@@ -108,22 +112,36 @@ MoltBoard is designed to work with Clawdbot's cron system for automated task pro
 
 ### Setting Up the Cron Job
 
-Use Clawdbot's cron system to schedule the task worker. See the [Clawdbot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs) for details.
+Use MoltBot's cron system to schedule the task worker. See the [MoltBot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs) for details.
 
 ```bash
 # Add the task worker cron job (runs every 3 minutes)
-clawdbot cron add "moltboard-worker" "*/3 * * * *" \
-    "/path/to/moltboard/skills/task-manager/scripts/cron-worker.sh"
+moltbot cron add "Task Lifecycle Worker" "*/3 * * * *" \
+    "bun /path/to/moltboard/skills/task-manager/scripts/recurring-work.js"
 
 # Verify it's registered
-clawdbot cron list
+moltbot cron list
 ```
 
-The cron worker will:
-- Back up your workspace state
+The task worker will:
+
 - Check for **Ready** tasks
 - Process one task at a time
-- Log progress to `~/workspace/logs/cron-worker.log`
+- Update task status and commit changes
+
+### Install the Task Manager Skill in MoltBot
+
+To use the task-manager skill with MoltBot (previously Clawdbot), move the skill folder from this repo into your MoltBot skills directory inside your workspace.
+
+**Steps:**
+
+1. Locate your workspace root (from `agents.defaults.workspace` in `~/.clawdbot/clawdbot.json`).
+2. Move the skill folder from this repo into your workspace skills folder:
+
+- Source: `moltboard/skills/task-manager`
+- Destination: `<YOUR_WORKSPACE>/skills/task-manager`
+
+MoltBot only loads skills from the workspace `skills` directory, so the skill won’t be detected until it’s moved there.
 
 ## Features
 
@@ -131,15 +149,16 @@ The cron worker will:
 
 Tasks flow through a simple lifecycle:
 
-| Status | Icon | Description |
-|--------|------|-------------|
-| **Backlog** | `[~]` | Ideas and future work, not yet prioritized |
-| **Ready** | `[ ]` | Actionable tasks, ready to start |
-| **In Progress** | `[*]` | Currently being worked on |
-| **Completed** | `[x]` | Finished tasks |
-| **Blocked** | `[!]` | Waiting on dependencies or external factors |
+| Status          | Icon  | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| **Backlog**     | `[~]` | Ideas and future work, not yet prioritized  |
+| **Ready**       | `[ ]` | Actionable tasks, ready to start            |
+| **In Progress** | `[*]` | Currently being worked on                   |
+| **Completed**   | `[x]` | Finished tasks                              |
+| **Blocked**     | `[!]` | Waiting on dependencies or external factors |
 
 Features include:
+
 - Drag-and-drop reordering
 - Task dependencies (blocked by other tasks)
 - Priority levels (urgent, high, medium, low)
@@ -163,6 +182,7 @@ Features include:
 ### System Status
 
 Monitor your development environment:
+
 - System uptime and memory usage
 - Database connection status
 - Git repository state
@@ -194,43 +214,43 @@ moltboard/
 
 ### Tasks
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/tasks` | List all tasks |
-| `POST` | `/api/tasks` | Create a new task |
-| `PUT` | `/api/tasks` | Update a task |
-| `PATCH` | `/api/tasks` | Reorder tasks |
-| `DELETE` | `/api/tasks?id=N` | Delete a task |
+| Method   | Endpoint          | Description       |
+| -------- | ----------------- | ----------------- |
+| `GET`    | `/api/tasks`      | List all tasks    |
+| `POST`   | `/api/tasks`      | Create a new task |
+| `PUT`    | `/api/tasks`      | Update a task     |
+| `PATCH`  | `/api/tasks`      | Reorder tasks     |
+| `DELETE` | `/api/tasks?id=N` | Delete a task     |
 
 ### Projects
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/projects` | List all projects |
-| `POST` | `/api/projects` | Create a new project |
-| `POST` | `/api/projects/import-github` | Import from GitHub |
-| `GET` | `/api/projects/[id]` | Get project details |
-| `POST` | `/api/projects/[id]/sync` | Sync GitHub issues |
+| Method | Endpoint                      | Description          |
+| ------ | ----------------------------- | -------------------- |
+| `GET`  | `/api/projects`               | List all projects    |
+| `POST` | `/api/projects`               | Create a new project |
+| `POST` | `/api/projects/import-github` | Import from GitHub   |
+| `GET`  | `/api/projects/[id]`          | Get project details  |
+| `POST` | `/api/projects/[id]/sync`     | Sync GitHub issues   |
 
 ### Status
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/status` | Full system status |
-| `GET` | `/api/status/database` | Database health |
-| `GET` | `/api/status/uptime` | System uptime |
-| `GET` | `/api/metrics` | Task metrics history |
+| Method | Endpoint               | Description          |
+| ------ | ---------------------- | -------------------- |
+| `GET`  | `/api/status`          | Full system status   |
+| `GET`  | `/api/status/database` | Database health      |
+| `GET`  | `/api/status/uptime`   | System uptime        |
+| `GET`  | `/api/metrics`         | Task metrics history |
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start development server on port 5000 |
-| `bun run build` | Create production build |
-| `bun run start` | Run production server |
-| `bun run migrate` | Run database migrations |
-| `bun run lint` | Run ESLint |
-| `bun run type-check` | TypeScript type checking |
+| Command              | Description                           |
+| -------------------- | ------------------------------------- |
+| `bun run dev`        | Start development server on port 5000 |
+| `bun run build`      | Create production build               |
+| `bun run start`      | Run production server                 |
+| `bun run migrate`    | Run database migrations               |
+| `bun run lint`       | Run ESLint                            |
+| `bun run type-check` | TypeScript type checking              |
 
 ## Task Manager CLI
 
@@ -254,21 +274,30 @@ See `skills/task-manager/SKILL.md` for full CLI documentation.
 
 ## Background Workers
 
-MoltBoard includes background workers for automation:
+MoltBoard relies on three background workers to handle automation, backups, and synchronization.
 
-- **Backup Script** — Periodic workspace backup to git
-- **Project Sync** — Automatic GitHub issue synchronization
-- **Task Worker** — Picks up Ready tasks for agent processing
+| Name                      | Schedule  | Script                                             | Description                                                                       |
+| ------------------------- | --------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **workspace-backup**      | Every 3m  | `skills/task-manager/scripts/backup.sh`            | Performs a global backup of the workspace state to a recovery git repository.     |
+| **Task Lifecycle Worker** | Every 3m  | `skills/task-manager/scripts/recurring-work.js`    | Manages task execution, auto-commits changes, and handles task state transitions. |
+| **project-sync**          | Every 30m | `skills/task-manager/scripts/project-sync-cron.js` | Synchronizes GitHub issues for configured projects.                               |
 
-Set up using Clawdbot cron (recommended):
+### Setting Up Cron Jobs
+
+Recommended configuration using MoltBot:
+
 ```bash
-# Task worker (every 3 minutes)
-clawdbot cron add "moltboard-worker" "*/3 * * * *" \
-    "./skills/task-manager/scripts/cron-worker.sh"
+# 1. Workspace Backup (Every 3m)
+moltbot cron add "workspace-backup" "*/3 * * * *" \
+    "/path/to/moltboard/skills/task-manager/scripts/backup.sh"
 
-# GitHub issue sync (every 15 minutes)
-clawdbot cron add "moltboard-sync" "*/15 * * * *" \
-    "bun ./skills/task-manager/scripts/project-sync-cron.js"
+# 2. Task Lifecycle Worker (Every 3m)
+moltbot cron add "Task Lifecycle Worker" "*/3 * * * *" \
+    "bun /path/to/moltboard/skills/task-manager/scripts/recurring-work.js"
+
+# 3. Project Sync (Every 30m)
+moltbot cron add "project-sync" "*/30 * * * *" \
+    "bun /path/to/moltboard/skills/task-manager/scripts/project-sync-cron.js"
 ```
 
 ## Tech Stack

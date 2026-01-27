@@ -40,4 +40,6 @@ export function getWorkspacePath() {
   return DEFAULT_WORKSPACE;
 }
 
-export default { getWorkspacePath };
+const workspacePath = { getWorkspacePath };
+
+export default workspacePath;

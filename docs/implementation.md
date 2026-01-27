@@ -72,14 +72,14 @@ The config file structure:
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GITHUB_TOKEN` | Yes | - | GitHub Personal Access Token |
-| `GITHUB_OWNER` | Yes | - | GitHub username or org |
-| `GITHUB_REPO` | No | - | Default repository name |
-| `DATABASE_URL` | No | `./data/tasks.db` | SQLite database path |
-| `NEXT_PUBLIC_APP_URL` | No | `http://localhost:5000` | Application URL |
-| `MOLTBOT_WORKSPACE` | No | `~/workspace` | Workspace directory |
+| Variable              | Required | Default                 | Description                  |
+| --------------------- | -------- | ----------------------- | ---------------------------- |
+| `GITHUB_TOKEN`        | Yes      | -                       | GitHub Personal Access Token |
+| `GITHUB_OWNER`        | Yes      | -                       | GitHub username or org       |
+| `GITHUB_REPO`         | No       | -                       | Default repository name      |
+| `DATABASE_URL`        | No       | `./data/tasks.db`       | SQLite database path         |
+| `NEXT_PUBLIC_APP_URL` | No       | `http://localhost:5000` | Application URL              |
+| `MOLTBOT_WORKSPACE`   | No       | `~/workspace`           | Workspace directory          |
 
 ---
 
@@ -148,19 +148,19 @@ open http://localhost:5000
 
 ## Cron Job Setup
 
-Set up automated task processing using Clawdbot cron:
+Set up automated task processing using MoltBot cron:
 
 ```bash
 # Task worker (every 3 minutes)
-clawdbot cron add "moltboard-worker" "*/3 * * * *" \
+moltbot cron add "moltboard-worker" "*/3 * * * *" \
     "/path/to/moltboard/skills/task-manager/scripts/cron-worker.sh"
 
 # GitHub issue sync (every 15 minutes)
-clawdbot cron add "moltboard-sync" "*/15 * * * *" \
+moltbot cron add "moltboard-sync" "*/15 * * * *" \
     "bun /path/to/moltboard/skills/task-manager/scripts/project-sync-cron.js"
 ```
 
-See [Clawdbot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs) for details.
+See [MoltBot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs) for details.
 
 ---
 
@@ -168,7 +168,7 @@ See [Clawdbot Cron Jobs documentation](https://docs.molt.bot/automation/cron-job
 
 - [ ] Create GitHub Personal Access Token with `repo` and `read:user` scopes
 - [ ] Configure `.env.local` with your credentials
-- [ ] Verify `~/.clawdbot/clawdbot.json` exists with workspace path
+- [ ] Verify `~/.clawdbot/clawdbot.json` or `~/.moltbot/moltbot.json` exists with workspace path
 - [ ] Run `bun run migrate` to initialize database
-- [ ] Set up Clawdbot cron jobs for task processing
+- [ ] Set up MoltBot cron jobs for task processing
 - [ ] Test all features work correctly

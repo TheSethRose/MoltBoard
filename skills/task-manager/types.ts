@@ -6,17 +6,17 @@
  * Valid task status values
  */
 export type TaskStatus =
-  | 'backlog'
-  | 'ready'
-  | 'in-progress'
-  | 'pending'
-  | 'completed'
-  | 'blocked';
+  | "backlog"
+  | "ready"
+  | "in-progress"
+  | "pending"
+  | "completed"
+  | "blocked";
 
 /**
  * Valid task priority values
  */
-export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
+export type TaskPriority = "urgent" | "high" | "medium" | "low";
 
 /**
  * Task tags type
@@ -78,9 +78,9 @@ export interface TaskDisplay {
  * Options for listing tasks
  */
 export interface TaskListOptions {
-  filter?: 'all' | TaskStatus;
-  sortBy?: 'sort_order' | 'id' | 'priority';
-  sortOrder?: 'ASC' | 'DESC';
+  filter?: "all" | TaskStatus;
+  sortBy?: "sort_order" | "id" | "priority";
+  sortOrder?: "ASC" | "DESC";
 }
 
 /**
@@ -88,7 +88,7 @@ export interface TaskListOptions {
  */
 export interface AddTaskOptions {
   text: string;
-  status?: 'ready' | 'pending';
+  status?: "ready" | "pending";
   priority?: TaskPriority;
   tags?: TaskTags;
   project_id?: number;
