@@ -326,6 +326,7 @@ function TaskModal({
   onDelete?: (id: number) => void;
 }) {
   const isEditMode = task !== null;
+  const lastTaskIdRef = React.useRef<number | null>(null);
   const [text, setText] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Task["status"]>(DEFAULT_TASK_STATUS);
@@ -339,7 +340,12 @@ function TaskModal({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    const currentTaskId = task?.id ?? null;
+    const taskChanged = currentTaskId !== lastTaskIdRef.current;
+
+    if (taskChanged) {
       if (task) {
         // Edit mode - populate from task
         setText(task.text);
@@ -361,11 +367,18 @@ function TaskModal({
         setProjectId(defaultProjectId ?? null);
         setWorkNotes([]);
       }
+
+      lastTaskIdRef.current = currentTaskId;
       setShowDeleteConfirm(false);
       setTitleError(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open, task, defaultStatus, defaultProjectId]);
+
+  React.useEffect(() => {
+    if (!open || !task) return;
+    setWorkNotes(task.work_notes || []);
+  }, [open, task?.id, task?.work_notes]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1124,6 +1137,14 @@ export function TasksClient({
     setEditingTask(task);
     setAddModalOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (!editingTask) return;
+    const updatedTask = tasks.find((t) => t.id === editingTask.id);
+    if (updatedTask && updatedTask !== editingTask) {
+      setEditingTask(updatedTask);
+    }
+  }, [tasks, editingTask?.id]);
 
   // Filter tasks by project if selected
   const filteredTasks = useMemo(() => {

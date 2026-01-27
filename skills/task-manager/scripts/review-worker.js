@@ -113,19 +113,27 @@ function hasRecentReviewComment(workNotesJson) {
   });
 }
 
+function hasCompletedReview(workNotesJson) {
+  const notes = parseWorkNotes(workNotesJson);
+  return notes.some((note) => {
+    if (!note || typeof note.content !== "string") return false;
+    return note.content.toLowerCase().includes("review:done");
+  });
+}
+
 function markApproved(taskId, summary, activity) {
   if (!summary) {
     console.error("Summary is required (use --summary)");
     return;
   }
 
-  db.prepare(
-    "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(TASK_STATUS.completed, taskId);
-
   appendWorkNote(taskId, `review:done: ${summary}`);
-  if (activity) appendWorkNote(taskId, `activity: ${activity}`);
-  console.log(`\n✓ Approved task #${taskId} → ${TASK_STATUS.completed}`);
+  if (activity) {
+    appendWorkNote(taskId, `activity: ${activity}`);
+  } else {
+    appendWorkNote(taskId, "activity: review approved; awaiting human confirmation");
+  }
+  console.log(`\n✓ Approved task #${taskId} → ${TASK_STATUS.review} (awaiting human)`);
 }
 
 function requestChanges(taskId, summary, activity) {
@@ -174,7 +182,9 @@ const reviewTasks = db
   .all(TASK_STATUS.review);
 
 const nextTask = reviewTasks.find(
-  (task) => !hasRecentReviewComment(task.work_notes || "[]"),
+  (task) =>
+    !hasCompletedReview(task.work_notes || "[]") &&
+    !hasRecentReviewComment(task.work_notes || "[]"),
 );
 
 if (!nextTask) {
