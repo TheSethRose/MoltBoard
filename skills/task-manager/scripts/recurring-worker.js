@@ -4,7 +4,7 @@
  * Finds the next available task respecting dependencies (blocked_by)
  * Does NOT auto-complete or auto-promote - agent controls task lifecycle
  *
- * TASK STATUS VALUES (must match API):
+ * TASK STATUS VALUES (configurable via env; must match API):
  * - backlog: Not ready, waiting to be prioritized
  * - ready: Available to pick up
  * - in-progress: Currently being worked
@@ -39,13 +39,55 @@ const WORKSPACE_ROOT = getWorkspacePath();
 const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
 const PROJECT_FILTER = process.env.PROJECT_FILTER;
 
+const DEFAULT_TASK_STATUSES = [
+  "backlog",
+  "ready",
+  "in-progress",
+  "pending",
+  "blocked",
+  "completed",
+  "review",
+];
+
+function parseStatuses(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((status) => status.trim())
+    .filter(Boolean);
+}
+
+function getTaskStatuses() {
+  const parsed = parseStatuses(process.env.TASK_STATUSES || "");
+  return parsed.length > 0 ? parsed : [...DEFAULT_TASK_STATUSES];
+}
+
+const TASK_STATUSES = getTaskStatuses();
+
+function resolveStatus(envKey, fallback) {
+  const raw = process.env[envKey] || fallback;
+  if (TASK_STATUSES.includes(raw)) return raw;
+  if (TASK_STATUSES.includes(fallback)) return fallback;
+  return TASK_STATUSES[0] || fallback;
+}
+
+const TASK_STATUS = {
+  backlog: resolveStatus("TASK_STATUS_BACKLOG", "backlog"),
+  ready: resolveStatus("TASK_STATUS_READY", "ready"),
+  inProgress: resolveStatus("TASK_STATUS_IN_PROGRESS", "in-progress"),
+  pending: resolveStatus("TASK_STATUS_PENDING", "pending"),
+  blocked: resolveStatus("TASK_STATUS_BLOCKED", "blocked"),
+  completed: resolveStatus("TASK_STATUS_COMPLETED", "completed"),
+  review: resolveStatus("TASK_STATUS_REVIEW", "review"),
+};
+
 // Ensure database exists
 if (!fs.existsSync(DB_PATH)) {
   console.log("No tasks database found");
   process.exit(0);
 }
 
-const db = new Database(DB_PATH, { readonly: false });
+const db = new Database(DB_PATH);
 
 // Helper: Get project by ID
 function getProjectById(projectId) {
@@ -183,10 +225,10 @@ function areDependenciesMet(blockedByJson) {
         `
       SELECT COUNT(*) as count FROM tasks
       WHERE task_number IN (${placeholders})
-      AND status != 'completed'
+      AND status != ?
     `,
       )
-      .get(...blockedBy);
+      .get(...blockedBy, TASK_STATUS.completed);
 
     return incompleteBlockers.count === 0;
   } catch {
@@ -208,10 +250,10 @@ function getIncompleteBlockers(blockedByJson) {
         `
       SELECT task_number, text FROM tasks
       WHERE task_number IN (${placeholders})
-      AND status != 'completed'
+      AND status != ?
     `,
       )
-      .all(...blockedBy);
+      .all(...blockedBy, TASK_STATUS.completed);
 
     return blockers;
   } catch {
@@ -227,7 +269,7 @@ function completeWithSummary(taskId) {
     return;
   }
 
-  if (task.status !== "in-progress") {
+  if (task.status !== TASK_STATUS.inProgress) {
     console.error(
       `Task #${taskId} is not in-progress (current: ${task.status})`,
     );
@@ -251,7 +293,7 @@ function completeWithSummary(taskId) {
   // Update task
   db.prepare(
     "UPDATE tasks SET status = ?, work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run("completed", JSON.stringify(updatedNotes), taskId);
+  ).run(TASK_STATUS.completed, JSON.stringify(updatedNotes), taskId);
 
   console.log(`\n✓ Completed task #${task.task_number} with Final Summary`);
   console.log(`  Final Summary: ${finalSummary.content}`);
@@ -291,10 +333,10 @@ function updateBlockersForTask(completedTaskId) {
     const newBlockers = blockers.filter((id) => id !== completedTaskId);
 
     if (newBlockers.length === 0) {
-      if (blockedTask.status === "blocked") {
+      if (blockedTask.status === TASK_STATUS.blocked) {
         db.prepare(
           "UPDATE tasks SET blocked_by = ?, status = ? WHERE id = ?",
-        ).run("[]", "ready", blockedTask.id);
+        ).run("[]", TASK_STATUS.ready, blockedTask.id);
         console.log(
           `→ Unblocked and moved to ready: #${blockedTask.task_number}`,
         );
@@ -308,16 +350,22 @@ const counts = db
   .prepare(
     `
   SELECT
-    SUM(CASE WHEN status = 'backlog' THEN 1 ELSE 0 END) as backlog,
-    SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as ready,
-    SUM(CASE WHEN status = 'in-progress' THEN 1 ELSE 0 END) as in_progress,
-    SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) as blocked,
-    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as backlog,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as ready,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as in_progress,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as blocked,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed
   FROM tasks
   WHERE 1=1 ${getProjectFilterClause()}
 `,
   )
-  .get();
+  .get(
+    TASK_STATUS.backlog,
+    TASK_STATUS.ready,
+    TASK_STATUS.inProgress,
+    TASK_STATUS.blocked,
+    TASK_STATUS.completed,
+  );
 
 console.log("=== Task Status ===");
 console.log(
@@ -334,12 +382,12 @@ const currentTask = db
     `
   SELECT id, task_number, text, notes, work_notes, priority, tags, updated_at
   FROM tasks
-  WHERE status = 'in-progress' ${getProjectFilterClause()}
+  WHERE status = ? ${getProjectFilterClause()}
   ORDER BY updated_at ASC
   LIMIT 1
 `,
   )
-  .get();
+  .get(TASK_STATUS.inProgress);
 
 const STUCK_THRESHOLD_MINUTES = 10; // Flag as stuck after this long
 
@@ -489,11 +537,11 @@ const readyTasks = db
     `
   SELECT id, task_number, text, notes, priority, tags, sort_order, blocked_by
   FROM tasks
-  WHERE status = 'ready' ${getProjectFilterClause()}
+  WHERE status = ? ${getProjectFilterClause()}
   ORDER BY sort_order ASC, id ASC
 `,
   )
-  .all();
+  .all(TASK_STATUS.ready);
 
 if (readyTasks.length === 0) {
   console.log("=== No Ready Tasks ===");
@@ -553,11 +601,11 @@ const waitingOnThis = db
   .prepare(
     `
   SELECT task_number, text FROM tasks
-  WHERE status = 'ready'
+  WHERE status = ?
   AND blocked_by LIKE ? ${getProjectFilterClause()}
 `,
   )
-  .all(`%${nextTask.task_number}%`);
+  .all(TASK_STATUS.ready, `%${nextTask.task_number}%`);
 
 if (waitingOnThis.length > 0) {
   console.log(
@@ -566,7 +614,9 @@ if (waitingOnThis.length > 0) {
   waitingOnThis.forEach((t) => console.log(`  #${t.task_number}: ${t.text}`));
 }
 
-console.log('\n→ To work on this task, update its status to "in-progress"');
+console.log(
+  `\n→ To work on this task, update its status to "${TASK_STATUS.inProgress}"`,
+);
 console.log(
   "   For tasks returning from stuck state, check if complete first.",
 );

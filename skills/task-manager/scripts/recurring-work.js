@@ -32,6 +32,48 @@ const DB_PATH =
 
 const STALE_THRESHOLD_MINUTES = 30;
 
+const DEFAULT_TASK_STATUSES = [
+  "backlog",
+  "ready",
+  "in-progress",
+  "pending",
+  "blocked",
+  "completed",
+  "review",
+];
+
+function parseStatuses(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((status) => status.trim())
+    .filter(Boolean);
+}
+
+function getTaskStatuses() {
+  const parsed = parseStatuses(process.env.TASK_STATUSES || "");
+  return parsed.length > 0 ? parsed : [...DEFAULT_TASK_STATUSES];
+}
+
+const TASK_STATUSES = getTaskStatuses();
+
+function resolveStatus(envKey, fallback) {
+  const raw = process.env[envKey] || fallback;
+  if (TASK_STATUSES.includes(raw)) return raw;
+  if (TASK_STATUSES.includes(fallback)) return fallback;
+  return TASK_STATUSES[0] || fallback;
+}
+
+const TASK_STATUS = {
+  backlog: resolveStatus("TASK_STATUS_BACKLOG", "backlog"),
+  ready: resolveStatus("TASK_STATUS_READY", "ready"),
+  inProgress: resolveStatus("TASK_STATUS_IN_PROGRESS", "in-progress"),
+  pending: resolveStatus("TASK_STATUS_PENDING", "pending"),
+  blocked: resolveStatus("TASK_STATUS_BLOCKED", "blocked"),
+  completed: resolveStatus("TASK_STATUS_COMPLETED", "completed"),
+  review: resolveStatus("TASK_STATUS_REVIEW", "review"),
+};
+
 // ============================================================================
 // UTILITIES
 // ============================================================================
@@ -200,12 +242,12 @@ function main() {
         `
       SELECT t.id, t.task_number, t.text, t.status, t.project_id, t.work_notes, t.updated_at
       FROM tasks t
-      WHERE t.status = 'in-progress'
+      WHERE t.status = ?
       ORDER BY t.updated_at ASC
       LIMIT 1
     `,
       )
-      .get();
+      .get(TASK_STATUS.inProgress);
 
     if (inProgressTask) {
       // ======================================================================
@@ -233,8 +275,8 @@ function main() {
         // Still check for done/blocked signals to update status
         if (signals.done) {
           db.prepare(
-            `UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(inProgressTask.id);
+            `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          ).run(TASK_STATUS.completed, inProgressTask.id);
           appendWorkNote(
             db,
             inProgressTask.id,
@@ -249,8 +291,8 @@ function main() {
           );
         } else if (signals.blocked) {
           db.prepare(
-            `UPDATE tasks SET status = 'blocked', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(inProgressTask.id);
+            `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          ).run(TASK_STATUS.blocked, inProgressTask.id);
           log(
             "info",
             `Marked task #${inProgressTask.task_number} as BLOCKED: ${signals.blockedReason}`,
@@ -321,8 +363,8 @@ function main() {
           }
 
           db.prepare(
-            `UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(inProgressTask.id);
+            `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          ).run(TASK_STATUS.completed, inProgressTask.id);
 
           appendWorkNote(
             db,
@@ -346,8 +388,8 @@ function main() {
           }
 
           db.prepare(
-            `UPDATE tasks SET status = 'blocked', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(inProgressTask.id);
+            `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          ).run(TASK_STATUS.blocked, inProgressTask.id);
 
           appendWorkNote(
             db,
@@ -383,12 +425,12 @@ function main() {
           `
         SELECT t.id, t.task_number, t.text, t.status, t.project_id, t.work_notes, t.updated_at
         FROM tasks t
-        WHERE t.status = 'pending'
+        WHERE t.status = ?
         ORDER BY t.updated_at ASC
         LIMIT 1
       `,
         )
-        .get();
+        .get(TASK_STATUS.pending);
 
       if (pendingTask) {
         // Calculate minutes pending
@@ -441,8 +483,8 @@ function main() {
               gitCommit(projectPath, commitMsg);
               gitPush(projectPath);
               db.prepare(
-                `UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              ).run(pendingTask.id);
+                `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+              ).run(TASK_STATUS.completed, pendingTask.id);
               appendWorkNote(db, pendingTask.id, "Task completed");
               log("info", `Completed task #${pendingTask.task_number}`);
               actionsTaken.push(
@@ -451,8 +493,8 @@ function main() {
             } else if (signals.done && !isDirty) {
               // Mark complete without commit
               db.prepare(
-                `UPDATE tasks SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              ).run(pendingTask.id);
+                `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+              ).run(TASK_STATUS.completed, pendingTask.id);
               appendWorkNote(db, pendingTask.id, "Task completed (no changes)");
               log(
                 "info",
@@ -500,12 +542,12 @@ function main() {
             `
           SELECT t.id, t.task_number, t.text, t.status, t.project_id, t.notes
           FROM tasks t
-          WHERE t.status = 'ready'
+          WHERE t.status = ?
           ORDER BY t.sort_order ASC, t.id ASC
           LIMIT 1
         `,
           )
-          .get();
+          .get(TASK_STATUS.ready);
 
         if (readyTask) {
           log(
@@ -515,8 +557,8 @@ function main() {
 
           // Update status to in-progress
           db.prepare(
-            `UPDATE tasks SET status = 'in-progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(readyTask.id);
+            `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          ).run(TASK_STATUS.inProgress, readyTask.id);
 
           // Log start with planned approach
           const project = readyTask.project_id
