@@ -37,6 +37,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { TaskStatus } from "@/types/task";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -68,7 +69,7 @@ interface Task {
   id: number;
   task_number: number;
   text: string;
-  status: "backlog" | "ready" | "in-progress" | "completed" | "blocked";
+  status: TaskStatus;
   notes?: string;
   tags?: string[];
   priority?: "urgent" | "high" | "medium" | "low" | null;

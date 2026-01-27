@@ -1,4 +1,5 @@
 import { getDb, releaseDb } from "@/lib/db";
+import type { TaskStatus } from "@/types/task";
 
 interface Project {
   id: number;
@@ -19,7 +20,7 @@ interface Task {
   id: number;
   task_number: number;
   text: string;
-  status: "backlog" | "ready" | "in-progress" | "completed" | "blocked";
+  status: TaskStatus;
   notes?: string;
   tags?: string; // JSON string from DB
   priority?: "urgent" | "high" | "medium" | "low" | null;

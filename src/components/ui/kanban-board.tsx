@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { formatStatusLabel } from "@/lib/task-statuses";
+import type { TaskStatus } from "@/types/task";
 import {
   Plus,
   X,
@@ -19,7 +21,7 @@ export interface KanbanTask {
   id: number;
   task_number: number;
   text: string;
-  status: "backlog" | "ready" | "in-progress" | "completed" | "blocked";
+  status: TaskStatus;
   tags?: string[];
   priority?: "urgent" | "high" | "medium" | "low" | null;
   order?: number;
@@ -30,7 +32,7 @@ export interface KanbanTask {
 }
 
 export interface KanbanColumn {
-  id: "backlog" | "ready" | "in-progress" | "completed" | "blocked";
+  id: TaskStatus;
   title: string;
   tasks: KanbanTask[];
 }
@@ -96,8 +98,8 @@ const PRIORITY_ICONS: Record<string, React.ReactNode> = {
   low: <ArrowDown size={10} />,
 };
 
-const STATUS_CONFIG: Record<
-  KanbanTask["status"],
+const DEFAULT_STATUS_CONFIG: Record<
+  string,
   { label: string; dot: string; color: string }
 > = {
   backlog: {
@@ -126,6 +128,13 @@ const STATUS_CONFIG: Record<
     color: "bg-red-500/20 text-red-400 border-red-500/30",
   },
 };
+
+const getStatusConfig = (status: string) =>
+  DEFAULT_STATUS_CONFIG[status] || {
+    label: formatStatusLabel(status).toUpperCase(),
+    dot: "bg-slate-500",
+    color: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  };
 
 const ALL_TAGS = [
   "bug",
@@ -382,6 +391,11 @@ export function KanbanBoard({
     setColumns(initialColumns);
   }, [initialColumns]);
 
+  const statusOptions = React.useMemo(
+    () => columns.map((column) => column.id),
+    [columns],
+  );
+
   const toggleTagFilter = (tag: string) => {
     setTagFilter((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
@@ -588,10 +602,11 @@ export function KanbanBoard({
             }}
           >
             <option value="">Move to...</option>
-            <option value="ready">Ready</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="blocked">Blocked</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {formatStatusLabel(status)}
+              </option>
+            ))}
           </select>
           <button
             onClick={() => {
@@ -617,7 +632,7 @@ export function KanbanBoard({
         onMouseLeave={handleScrollMouseUp}
       >
         {columns.map((column) => {
-          const config = STATUS_CONFIG[column.id];
+          const config = getStatusConfig(column.id);
           const filteredTasks = column.tasks.filter(shouldShowTask);
           const sortedTasks = [...filteredTasks].sort((a, b) => {
             // 1. Unblocked tasks first (no blocked_by or empty array)

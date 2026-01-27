@@ -34,6 +34,34 @@ const STATUS_MARKERS = {
 // - completed: Finished
 // - blocked: Cannot proceed (has dependencies)
 
+const DEFAULT_STATUSES = [
+  "backlog",
+  "ready",
+  "in-progress",
+  "pending",
+  "completed",
+  "blocked",
+];
+
+function parseEnvStatuses(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((status) => status.trim())
+    .filter(Boolean);
+}
+
+const STATUS_LIST =
+  parseEnvStatuses(process.env.TASK_STATUSES).length > 0
+    ? parseEnvStatuses(process.env.TASK_STATUSES)
+    : DEFAULT_STATUSES;
+
+const DEFAULT_STATUS =
+  process.env.TASK_STATUS_DEFAULT &&
+  STATUS_LIST.includes(process.env.TASK_STATUS_DEFAULT)
+    ? process.env.TASK_STATUS_DEFAULT
+    : STATUS_LIST[0] || "backlog";
+
 const [, , command, ...args] = process.argv;
 
 function printTask(task) {
@@ -67,13 +95,13 @@ function listTasks(filter = "all") {
 
 function addTask(text, status = "backlog") {
   if (!text) {
-    console.error('Usage: db-tasks.js add "<task text>" [backlog|ready]');
+    console.error('Usage: db-tasks.js add "<task text>" [status]');
     process.exit(1);
   }
 
-  const validStatuses = ["backlog", "ready"];
+  const validStatuses = STATUS_LIST;
   if (!validStatuses.includes(status)) {
-    status = "backlog";
+    status = DEFAULT_STATUS;
   }
 
   const maxOrder = db.prepare("SELECT MAX(sort_order) as max FROM tasks").get();
@@ -101,13 +129,7 @@ function updateTask(pattern, newStatus) {
     process.exit(1);
   }
 
-  const validStatuses = [
-    "ready",
-    "in-progress",
-    "pending",
-    "completed",
-    "blocked",
-  ];
+  const validStatuses = STATUS_LIST;
   if (!validStatuses.includes(newStatus)) {
     console.error(`Invalid status: ${newStatus}`);
     console.error("Valid statuses:", validStatuses.join(", "));
@@ -249,23 +271,25 @@ function deleteTask(pattern) {
 }
 
 function countTasks() {
-  const counts = db
+  const rows = db
     .prepare(
       `
-    SELECT 
-      SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) as ready,
-      SUM(CASE WHEN status = 'in-progress' THEN 1 ELSE 0 END) as in_progress,
-      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-      SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) as blocked
+    SELECT status, COUNT(*) as count
     FROM tasks
+    GROUP BY status
   `,
     )
-    .get();
+    .all();
 
-  console.log(
-    `Ready: ${counts.ready || 0} | In Progress: ${counts.in_progress || 0} | Pending: ${counts.pending || 0} | Completed: ${counts.completed || 0} | Blocked: ${counts.blocked || 0}`,
-  );
+  const counts = new Map(rows.map((row) => [row.status, row.count]));
+
+  const summary = STATUS_LIST.map((status) => {
+    const label = status.replace(/-/g, " ");
+    const count = counts.get(status) || 0;
+    return `${label.replace(/\b\w/g, (c) => c.toUpperCase())}: ${count}`;
+  }).join(" | ");
+
+  console.log(summary);
 }
 
 function showHelp() {
@@ -275,15 +299,15 @@ Task Manager CLI (SQLite-backed)
 Usage: db-tasks.js <command> [args]
 
 Commands:
-  list [filter]           List tasks (filter: backlog, ready, pending, blocked, in-progress, completed, all)
-  add "<text>" [status]   Add new task (status: backlog or ready, default: backlog)
+  list [filter]           List tasks (filter: any status or "all")
+  add "<text>" [status]   Add new task (default: ${DEFAULT_STATUS})
   update "<pattern>" <status>  Update task status
   complete "<pattern>"    Mark task as completed
   delete "<pattern>"      Delete a task
   count                   Show task counts by status
   help                    Show this help
 
-Statuses: backlog, ready, in-progress, completed, blocked
+Statuses: ${STATUS_LIST.join(", ")}
 `);
 }
 

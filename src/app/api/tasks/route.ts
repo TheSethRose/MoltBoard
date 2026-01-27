@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
 import { DbTask, parseDbTask } from "@/types/task";
+import { getDefaultTaskStatus, isValidTaskStatus } from "@/lib/task-statuses";
 import {
   withErrorHandling,
   badRequest,
@@ -69,7 +70,7 @@ export const POST = withErrorHandling(
       const body = await req.json();
       const {
         text,
-        status = "ready",
+        status = getDefaultTaskStatus(),
         tags = [],
         priority,
         notes = "",
@@ -81,6 +82,13 @@ export const POST = withErrorHandling(
         throw badRequest(
           "Task text is required and must be a string",
           "INVALID_TASK_TEXT",
+        );
+      }
+
+      if (!isValidTaskStatus(status)) {
+        throw badRequest(
+          `Invalid task status: ${status}`,
+          "INVALID_TASK_STATUS",
         );
       }
 
@@ -154,6 +162,13 @@ export const PUT = withErrorHandling(
         throw badRequest(
           "Task id is required and must be a number",
           "INVALID_TASK_ID",
+        );
+      }
+
+      if (status !== undefined && !isValidTaskStatus(status)) {
+        throw badRequest(
+          `Invalid task status: ${status}`,
+          "INVALID_TASK_STATUS",
         );
       }
 
@@ -310,6 +325,13 @@ export const PATCH = withErrorHandling(
         throw badRequest(
           "status and taskIds are required",
           "INVALID_REORDER_REQUEST",
+        );
+      }
+
+      if (!isValidTaskStatus(status)) {
+        throw badRequest(
+          `Invalid task status: ${status}`,
+          "INVALID_TASK_STATUS",
         );
       }
 

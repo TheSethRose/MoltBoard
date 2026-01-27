@@ -29,12 +29,14 @@ import {
   Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTaskStatuses, getDefaultTaskStatus, formatStatusLabel } from "@/lib/task-statuses";
+import type { TaskStatus } from "@/types/task";
 import useSWR, { type SWRConfiguration } from "swr";
 
 interface Task {
   id: number;
   task_number: number;
-  status: "backlog" | "ready" | "in-progress" | "completed" | "blocked";
+  status: TaskStatus;
   text: string;
   notes?: string;
   tags?: string[];
@@ -95,6 +97,9 @@ const PRIORITY_COLORS: Record<string, string> = {
   medium: "text-yellow-500",
   low: "text-emerald-500",
 };
+
+const TASK_STATUSES = getTaskStatuses();
+const DEFAULT_TASK_STATUS = getDefaultTaskStatus(TASK_STATUSES);
 
 function TagSelector({
   selected,
@@ -319,7 +324,7 @@ function TaskModal({
   const isEditMode = task !== null;
   const [text, setText] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<Task["status"]>("ready");
+  const [status, setStatus] = useState<Task["status"]>(DEFAULT_TASK_STATUS);
   const [tags, setTags] = useState<string[]>([]);
   const [priority, setPriority] = useState<Task["priority"]>(undefined);
   const [blockedBy, setBlockedBy] = useState<number[]>([]);
@@ -558,11 +563,11 @@ function TaskModal({
                     }}
                     aria-label="Task status"
                   >
-                    <option value="backlog">Backlog</option>
-                    <option value="ready">Ready</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="blocked">Blocked</option>
+                    {TASK_STATUSES.map((statusOption) => (
+                      <option key={statusOption} value={statusOption}>
+                        {formatStatusLabel(statusOption)}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -718,7 +723,7 @@ export function TasksClient({
 }: TasksClientProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addModalStatus, setAddModalStatus] = useState<Task["status"]>("ready");
+  const [addModalStatus, setAddModalStatus] = useState<Task["status"]>(DEFAULT_TASK_STATUS);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState<{
     column: number;
@@ -907,7 +912,7 @@ export function TasksClient({
 
   // Quick add - add to READY with defaults
   const quickAdd = (text: string) => {
-    addTask(text, "ready", [], undefined, "", []);
+    addTask(text, DEFAULT_TASK_STATUS as Task["status"], [], undefined, "", []);
   };
 
   // Optimistic delete
@@ -1122,33 +1127,12 @@ export function TasksClient({
   }, [tasks, projectFilter]);
 
   const columns = useMemo(
-    () => [
-      {
-        id: "backlog" as const,
-        title: "BACKLOG",
-        tasks: filteredTasks.filter((t) => t.status === "backlog"),
-      },
-      {
-        id: "ready" as const,
-        title: "READY",
-        tasks: filteredTasks.filter((t) => t.status === "ready"),
-      },
-      {
-        id: "in-progress" as const,
-        title: "IN PROGRESS",
-        tasks: filteredTasks.filter((t) => t.status === "in-progress"),
-      },
-      {
-        id: "completed" as const,
-        title: "COMPLETED",
-        tasks: filteredTasks.filter((t) => t.status === "completed"),
-      },
-      {
-        id: "blocked" as const,
-        title: "BLOCKED",
-        tasks: filteredTasks.filter((t) => t.status === "blocked"),
-      },
-    ],
+    () =>
+      TASK_STATUSES.map((status) => ({
+        id: status as Task["status"],
+        title: formatStatusLabel(status).toUpperCase(),
+        tasks: filteredTasks.filter((t) => t.status === status),
+      })),
     [filteredTasks],
   );
 
@@ -1175,7 +1159,7 @@ export function TasksClient({
         case "n":
           if (!isCtrlOrMeta && !e.shiftKey && !e.altKey) {
             e.preventDefault();
-            openAddModal("ready");
+            openAddModal(DEFAULT_TASK_STATUS as Task["status"]);
           }
           break;
 
@@ -1195,13 +1179,9 @@ export function TasksClient({
             if (e.altKey) {
               // Move task to next column
               const task = columns[current.column].tasks[current.index];
-              const nextStatus = [
-                "backlog",
-                "ready",
-                "in-progress",
-                "completed",
-                "blocked",
-              ][current.column + 1] as Task["status"];
+              const nextStatus = TASK_STATUSES[
+                current.column + 1
+              ] as Task["status"];
               if (task && nextStatus) {
                 moveTask(task.id, task.status, nextStatus);
                 setSelectedTaskIndex({
@@ -1230,13 +1210,9 @@ export function TasksClient({
             if (e.altKey) {
               // Move task to previous column
               const task = columns[current.column].tasks[current.index];
-              const prevStatus = [
-                "backlog",
-                "ready",
-                "in-progress",
-                "completed",
-                "blocked",
-              ][current.column - 1] as Task["status"];
+              const prevStatus = TASK_STATUSES[
+                current.column - 1
+              ] as Task["status"];
               if (task && prevStatus) {
                 moveTask(task.id, task.status, prevStatus);
                 setSelectedTaskIndex({

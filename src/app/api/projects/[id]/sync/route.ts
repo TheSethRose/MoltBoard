@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
 import { DbTask } from "@/types/task";
+import { getDefaultTaskStatus } from "@/lib/task-statuses";
 import {
   withErrorHandling,
   badRequest,
@@ -274,10 +275,7 @@ export const GET = withErrorHandling(
           const taskNumber = (maxResult?.max_task_num || 0) + 1;
 
           // Determine initial status based on issue state
-          let status: "backlog" | "ready" = "backlog";
-          if (issue.state === "open") {
-            status = "backlog";
-          }
+          let status = getDefaultTaskStatus();
 
           db.prepare(
             `
@@ -634,7 +632,7 @@ async function syncIssueToTask(
     const sortOrder = (maxResult?.max_order || 0) + 1;
     const taskNumber = (maxResult?.max_task_num || 0) + 1;
 
-    const status: "backlog" | "ready" = "backlog";
+    const status = getDefaultTaskStatus();
 
     if (hasIssueRepoColumn) {
       db.prepare(

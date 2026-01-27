@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
 import { DbTask, parseDbTask } from "@/types/task";
+import { isValidTaskStatus } from "@/lib/task-statuses";
 import {
   withErrorHandling,
   badRequest,
@@ -70,6 +71,13 @@ export const PUT = withErrorHandling(
         work_notes,
         append_work_note,
       } = body;
+
+      if (status !== undefined && !isValidTaskStatus(status)) {
+        throw badRequest(
+          `Invalid task status: ${status}`,
+          "INVALID_TASK_STATUS",
+        );
+      }
 
       const db = getDb();
 

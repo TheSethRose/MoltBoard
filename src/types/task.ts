@@ -2,13 +2,8 @@
  * Shared Task types for the dashboard application.
  */
 
-/** Task status enum */
-export type TaskStatus =
-  | "backlog"
-  | "ready"
-  | "in-progress"
-  | "completed"
-  | "blocked";
+/** Task status enum (configurable via env) */
+export type TaskStatus = string;
 
 /** Task priority enum */
 export type TaskPriority =

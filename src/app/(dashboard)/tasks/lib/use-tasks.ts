@@ -4,14 +4,9 @@ import useSWR from "swr";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Task } from "@/types/task";
+import type { TaskStatus as CoreTaskStatus } from "@/types/task";
 
-export type TaskStatus =
-  | "all"
-  | "ready"
-  | "in-progress"
-  | "pending"
-  | "completed"
-  | "blocked";
+export type TaskStatus = "all" | CoreTaskStatus;
 
 const fetcher = (url: string) =>
   fetch(url).then((res) => {
