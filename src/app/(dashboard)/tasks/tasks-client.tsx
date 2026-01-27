@@ -29,7 +29,11 @@ import {
   Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getTaskStatuses, getDefaultTaskStatus, formatStatusLabel } from "@/lib/task-statuses";
+import {
+  getTaskStatuses,
+  getDefaultTaskStatus,
+  formatStatusLabel,
+} from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
 import useSWR, { type SWRConfiguration } from "swr";
 
@@ -723,7 +727,8 @@ export function TasksClient({
 }: TasksClientProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addModalStatus, setAddModalStatus] = useState<Task["status"]>(DEFAULT_TASK_STATUS);
+  const [addModalStatus, setAddModalStatus] =
+    useState<Task["status"]>(DEFAULT_TASK_STATUS);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState<{
     column: number;

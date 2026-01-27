@@ -2,6 +2,8 @@ export const DEFAULT_TASK_STATUSES = [
   "backlog",
   "ready",
   "in-progress",
+  "pending",
+  "review",
   "completed",
   "blocked",
 ] as const;

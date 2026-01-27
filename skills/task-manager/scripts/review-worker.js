@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+/**
+ * Review Worker
+ * - Selects the next task in Review status
+ * - Agent reviews and approves or requests changes
+ */
+
+import path from "node:path";
+import fs from "node:fs";
+import crypto from "node:crypto";
+import { Database } from "bun:sqlite";
+import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+
+const WORKSPACE_ROOT = getWorkspacePath();
+const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
+
+const DEFAULT_TASK_STATUSES = [
+  "backlog",
+  "ready",
+  "in-progress",
+  "pending",
+  "blocked",
+  "completed",
+  "review",
+];
+
+const REVIEW_COOLDOWN_MINUTES = parseInt(
+  process.env.REVIEW_COOLDOWN_MINUTES || "60",
+  10,
+);
+
+function parseStatuses(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((status) => status.trim())
+    .filter(Boolean);
+}
+
+function getTaskStatuses() {
+  const parsed = parseStatuses(process.env.TASK_STATUSES || "");
+  return parsed.length > 0 ? parsed : [...DEFAULT_TASK_STATUSES];
+}
+
+const TASK_STATUSES = getTaskStatuses();
+
+function resolveStatus(envKey, fallback) {
+  const raw = process.env[envKey] || fallback;
+  if (TASK_STATUSES.includes(raw)) return raw;
+  if (TASK_STATUSES.includes(fallback)) return fallback;
+  return TASK_STATUSES[0] || fallback;
+}
+
+const TASK_STATUS = {
+  ready: resolveStatus("TASK_STATUS_READY", "ready"),
+  review: resolveStatus("TASK_STATUS_REVIEW", "review"),
+  completed: resolveStatus("TASK_STATUS_COMPLETED", "completed"),
+};
+
+function getArgValue(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1) return null;
+  return process.argv[index + 1] || null;
+}
+
+if (!fs.existsSync(DB_PATH)) {
+  console.log("No tasks database found");
+  process.exit(0);
+}
+
+const db = new Database(DB_PATH);
+
+function parseWorkNotes(workNotesJson) {
+  try {
+    return JSON.parse(workNotesJson || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function appendWorkNote(taskId, content, author = "system") {
+  const task = db
+    .prepare("SELECT work_notes FROM tasks WHERE id = ?")
+    .get(taskId);
+  const notes = parseWorkNotes(task?.work_notes);
+
+  const newNote = {
+    id: crypto.randomUUID(),
+    content,
+    author,
+    timestamp: new Date().toISOString(),
+  };
+
+  notes.push(newNote);
+  db.prepare(
+    "UPDATE tasks SET work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(JSON.stringify(notes), taskId);
+
+  return newNote;
+}
+
+function hasRecentReviewComment(workNotesJson) {
+  const notes = parseWorkNotes(workNotesJson);
+  const now = Date.now();
+  const cooldownMs = REVIEW_COOLDOWN_MINUTES * 60 * 1000;
+  return notes.some((note) => {
+    if (!note || typeof note.content !== "string") return false;
+    if (!note.timestamp) return false;
+    if (!note.content.toLowerCase().includes("review:")) return false;
+    const ts = Date.parse(note.timestamp);
+    if (Number.isNaN(ts)) return false;
+    return now - ts < cooldownMs;
+  });
+}
+
+function markApproved(taskId, summary, activity) {
+  if (!summary) {
+    console.error("Summary is required (use --summary)");
+    return;
+  }
+
+  db.prepare(
+    "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(TASK_STATUS.completed, taskId);
+
+  appendWorkNote(taskId, `review:done: ${summary}`);
+  if (activity) appendWorkNote(taskId, `activity: ${activity}`);
+  console.log(`\n✓ Approved task #${taskId} → ${TASK_STATUS.completed}`);
+}
+
+function requestChanges(taskId, summary, activity) {
+  if (!summary) {
+    console.error("Summary is required (use --summary)");
+    return;
+  }
+
+  db.prepare(
+    "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(TASK_STATUS.ready, taskId);
+
+  appendWorkNote(taskId, `review:failed: ${summary}`);
+  if (activity) appendWorkNote(taskId, `activity: ${activity}`);
+  console.log(
+    `\n✓ Requested changes for task #${taskId} → ${TASK_STATUS.ready}`,
+  );
+}
+
+const approveId = parseInt(getArgValue("--approve") || "", 10);
+const requestChangesId = parseInt(getArgValue("--request-changes") || "", 10);
+const summaryArg = getArgValue("--summary");
+const activityArg = getArgValue("--activity");
+
+if (approveId) {
+  markApproved(approveId, summaryArg, activityArg);
+  db.close();
+  process.exit(0);
+}
+
+if (requestChangesId) {
+  requestChanges(requestChangesId, summaryArg, activityArg);
+  db.close();
+  process.exit(0);
+}
+
+const reviewTasks = db
+  .prepare(
+    `
+  SELECT id, task_number, text, notes, work_notes, updated_at
+  FROM tasks
+  WHERE status = ?
+  ORDER BY updated_at ASC
+`,
+  )
+  .all(TASK_STATUS.review);
+
+const nextTask = reviewTasks.find(
+  (task) => !hasRecentReviewComment(task.work_notes || "[]"),
+);
+
+if (!nextTask) {
+  console.log("=== No Review Tasks ===");
+  console.log(
+    "All review tasks have recent review notes or none are available.",
+  );
+  db.close();
+  process.exit(0);
+}
+
+console.log("=== Review Queue ===");
+console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+if (nextTask.notes) {
+  console.log(`\nNotes:\n${nextTask.notes}`);
+}
+console.log("\nInstructions:");
+console.log("1) Review work notes and changes.");
+console.log("2) Approve or request changes using one command below.");
+console.log("\nCommands:");
+console.log(
+  `- Approve: node scripts/review-worker.js --approve ${nextTask.id} --summary "<summary>"`,
+);
+console.log(
+  `- Request changes: node scripts/review-worker.js --request-changes ${nextTask.id} --summary "<summary>"`,
+);
+
+db.close();

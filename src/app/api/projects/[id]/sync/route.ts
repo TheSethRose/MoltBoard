@@ -275,7 +275,7 @@ export const GET = withErrorHandling(
           const taskNumber = (maxResult?.max_task_num || 0) + 1;
 
           // Determine initial status based on issue state
-          let status = getDefaultTaskStatus();
+          const status = getDefaultTaskStatus();
 
           db.prepare(
             `

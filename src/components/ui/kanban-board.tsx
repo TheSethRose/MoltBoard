@@ -117,6 +117,16 @@ const DEFAULT_STATUS_CONFIG: Record<
     dot: "bg-blue-500",
     color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   },
+  pending: {
+    label: "PENDING",
+    dot: "bg-amber-500",
+    color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  },
+  review: {
+    label: "REVIEW",
+    dot: "bg-violet-500",
+    color: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+  },
   completed: {
     label: "COMPLETED",
     dot: "bg-emerald-500",

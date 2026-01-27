@@ -81,6 +81,20 @@ const TASK_STATUS = {
   review: resolveStatus("TASK_STATUS_REVIEW", "review"),
 };
 
+const REVIEW_STATUS_ENV =
+  process.env.TASK_STATUS_REVIEW ||
+  process.env.NEXT_PUBLIC_TASK_STATUS_REVIEW ||
+  "review";
+const HAS_REVIEW_STATUS = TASK_STATUSES.includes(REVIEW_STATUS_ENV);
+const REVIEW_STATUS = HAS_REVIEW_STATUS ? REVIEW_STATUS_ENV : null;
+const COMPLETE_TARGET_STATUS = REVIEW_STATUS || TASK_STATUS.completed;
+
+function getArgValue(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1) return null;
+  return process.argv[index + 1] || null;
+}
+
 // Ensure database exists
 if (!fs.existsSync(DB_PATH)) {
   console.log("No tasks database found");
@@ -262,7 +276,11 @@ function getIncompleteBlockers(blockedByJson) {
 }
 
 // Helper: Complete task with Final Summary note prepended
-function completeWithSummary(taskId) {
+function completeWithSummary(
+  taskId,
+  summary,
+  targetStatus = COMPLETE_TARGET_STATUS,
+) {
   const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
   if (!task) {
     console.error(`Task #${taskId} not found`);
@@ -280,9 +298,13 @@ function completeWithSummary(taskId) {
   const workNotes = JSON.parse(task.work_notes || "[]");
 
   // Generate Final Summary note
+  const statusLabel =
+    targetStatus === TASK_STATUS.completed
+      ? "completed"
+      : `moved to ${targetStatus}`;
   const finalSummary = {
     id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-    content: `✅ Task completed. Total progress entries: ${workNotes.length}`,
+    content: `✅ Task ${statusLabel}. ${summary ? `Summary: ${summary}` : `Total progress entries: ${workNotes.length}`}`,
     author: "system",
     timestamp: new Date().toISOString(),
   };
@@ -293,14 +315,55 @@ function completeWithSummary(taskId) {
   // Update task
   db.prepare(
     "UPDATE tasks SET status = ?, work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(TASK_STATUS.completed, JSON.stringify(updatedNotes), taskId);
+  ).run(targetStatus, JSON.stringify(updatedNotes), taskId);
 
-  console.log(`\n✓ Completed task #${task.task_number} with Final Summary`);
+  console.log(`\n✓ Updated task #${task.task_number} with Final Summary`);
   console.log(`  Final Summary: ${finalSummary.content}`);
   console.log(`  Total work_notes: ${updatedNotes.length}`);
 
   // Update blockers
-  updateBlockersForTask(taskId);
+  if (targetStatus === TASK_STATUS.completed) {
+    updateBlockersForTask(taskId);
+  }
+}
+
+function blockTask(taskId, reason, activity) {
+  const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+  if (!task) {
+    console.error(`Task #${taskId} not found`);
+    return;
+  }
+
+  if (!reason) {
+    console.error("Block reason is required (use --reason)");
+    return;
+  }
+
+  const workNotes = JSON.parse(task.work_notes || "[]");
+  const newNotes = [
+    ...workNotes,
+    {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      content: `status:blocked: ${reason}`,
+      author: "system",
+      timestamp: new Date().toISOString(),
+    },
+  ];
+
+  if (activity) {
+    newNotes.push({
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      content: `activity: ${activity}`,
+      author: "system",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  db.prepare(
+    "UPDATE tasks SET status = ?, work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(TASK_STATUS.blocked, JSON.stringify(newNotes), taskId);
+
+  console.log(`\n✓ Blocked task #${task.task_number}: ${reason}`);
 }
 
 // Helper: Append a work note to a task
@@ -375,6 +438,41 @@ if (PROJECT_FILTER && PROJECT_FILTER !== "all") {
   console.log(`(Filtered by project: ${PROJECT_FILTER})`);
 }
 console.log("");
+
+const completeTaskId = parseInt(
+  getArgValue("--complete-with-summary") || "",
+  10,
+);
+const completeForReviewId = parseInt(
+  getArgValue("--complete-for-review") || "",
+  10,
+);
+const blockTaskId = parseInt(getArgValue("--block") || "", 10);
+const summaryArg = getArgValue("--summary");
+const reasonArg = getArgValue("--reason");
+const activityArg = getArgValue("--activity");
+
+if (completeTaskId) {
+  completeWithSummary(completeTaskId, summaryArg, COMPLETE_TARGET_STATUS);
+  db.close();
+  process.exit(0);
+}
+
+if (completeForReviewId) {
+  completeWithSummary(
+    completeForReviewId,
+    summaryArg,
+    REVIEW_STATUS || COMPLETE_TARGET_STATUS,
+  );
+  db.close();
+  process.exit(0);
+}
+
+if (blockTaskId) {
+  blockTask(blockTaskId, reasonArg, activityArg);
+  db.close();
+  process.exit(0);
+}
 
 // Check for currently in-progress task
 const currentTask = db
@@ -490,14 +588,20 @@ if (currentTask) {
     if (hasProgressDetails) {
       console.log(
         "   - Run: node scripts/recurring-worker.js --complete-with-summary " +
-          currentTask.id,
+          currentTask.id +
+          (REVIEW_STATUS ? ' --summary "<summary>"' : ""),
       );
-      console.log('   - This will prepend a "Final Summary" and mark complete');
+      console.log(
+        REVIEW_STATUS
+          ? `   - This will prepend a "Final Summary" and move to ${REVIEW_STATUS}`
+          : '   - This will prepend a "Final Summary" and mark complete',
+      );
     } else {
       console.log("   - FIRST: Add work_notes entries documenting progress");
       console.log(
         "   - THEN: Run: node scripts/recurring-worker.js --complete-with-summary " +
-          currentTask.id,
+          currentTask.id +
+          (REVIEW_STATUS ? ' --summary "<summary>"' : ""),
       );
     }
     console.log(
@@ -629,7 +733,9 @@ console.log("2) Use relative paths; no writes outside sandbox.");
 console.log(
   "3) Update work_notes throughout the process (progress + decisions).",
 );
-console.log("4) If blocked or unclear, set status to BLOCKED and log why.");
+console.log(
+  '4) If blocked or unclear, use --block <taskId> --reason "..." --activity "...".',
+);
 console.log(
   "5) If you commit, run git from the Project Root (CWD), not the workspace root.",
 );
