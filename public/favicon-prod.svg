@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#1a1a1a" stroke="#22c55e" stroke-width="2"/>
+  <!-- Claw mark - Production version (green accent) -->
+  <path d="M10 8 L10 16 L12 14 L14 18 L16 14 L18 18 L20 14 L22 16 L22 8" 
+        stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Prod badge -->
+  <circle cx="24" cy="8" r="5" fill="#22c55e"/>
+  <text x="24" y="10.5" text-anchor="anchor-middle" font-size="5" font-family="Arial" font-weight="bold" fill="white">P</text>
+</svg>
