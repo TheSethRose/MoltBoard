@@ -3,7 +3,7 @@
  * Uses direct SQLite access for initial SSR render.
  */
 
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import path from "path";
 import { getWorkspacePath } from "@/lib/workspace-path";
 import { Task, parseDbTask, type DbTask } from "@/types/task";

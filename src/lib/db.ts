@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import path from "path";
 import { getWorkspacePath } from "@/lib/workspace-path";
 
@@ -6,22 +6,20 @@ const DB_PATH = path.join(getWorkspacePath(), "data", "tasks.db");
 
 // Pool configuration
 const POOL_SIZE = 5;
-const pool: Database.Database[] = [];
+const pool: Array<Database | null> = [];
 const inUse: boolean[] = new Array(POOL_SIZE).fill(false);
 
 /**
  * Get a connection from the pool.
  * Uses a simple FIFO approach with busy-wait fallback.
  */
-export function getDb(): Database.Database {
+export function getDb(): Database {
   // First, try to find an available connection
   for (let i = 0; i < POOL_SIZE; i++) {
-    if (!inUse[i]) {
-      // Verify connection is still valid
-      if (pool[i] && pool[i].open) {
-        inUse[i] = true;
-        return pool[i];
-      }
+    const db = pool[i];
+    if (!inUse[i] && db) {
+      inUse[i] = true;
+      return db;
     }
   }
 
@@ -36,7 +34,7 @@ export function getDb(): Database.Database {
 /**
  * Return a connection to the pool.
  */
-export function releaseDb(db: Database.Database): void {
+export function releaseDb(db: Database): void {
   for (let i = 0; i < pool.length; i++) {
     if (pool[i] === db) {
       inUse[i] = false;
@@ -59,7 +57,7 @@ export function initPool(): void {
     }
   }
   console.log(
-    `Database pool initialized with ${pool.filter((db) => db && db.open).length} connections`,
+    `Database pool initialized with ${pool.filter((db) => db).length} connections`,
   );
 }
 
@@ -69,14 +67,15 @@ export function initPool(): void {
  */
 export function closePool(): void {
   for (let i = 0; i < pool.length; i++) {
-    if (pool[i] && pool[i].open) {
+    const db = pool[i];
+    if (db) {
       try {
-        pool[i].close();
+        db.close();
       } catch (error) {
         console.error(`Error closing database connection ${i}:`, error);
       }
     }
-    pool[i] = undefined as unknown as Database.Database;
+    pool[i] = null;
     inUse[i] = false;
   }
   console.log("Database pool closed");

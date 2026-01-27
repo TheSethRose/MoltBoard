@@ -5,7 +5,7 @@
  */
 import path from "node:path";
 import fs from "node:fs";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();

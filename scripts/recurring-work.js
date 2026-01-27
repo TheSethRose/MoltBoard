@@ -26,7 +26,7 @@
  *   GITHUB_TOKEN - GitHub API token for issue sync
  */
 
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";

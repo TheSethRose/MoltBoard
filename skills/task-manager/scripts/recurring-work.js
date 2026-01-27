@@ -20,11 +20,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import crypto from "node:crypto";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { Database } from "bun:sqlite";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ============================================================================
 // CONFIGURATION
@@ -32,44 +29,6 @@ const __dirname = path.dirname(__filename);
 
 const DB_PATH =
   process.env.DB_PATH || path.join(getWorkspacePath(), "data", "tasks.db");
-
-// Find better-sqlite3 - check multiple locations
-async function findBetterSqlite3() {
-  const workspaceRoot = getWorkspacePath();
-  const locations = [
-    // Local node_modules (if task-manager has its own)
-    path.join(__dirname, "..", "node_modules", "better-sqlite3"),
-    // Dashboard node_modules (relative to script)
-    path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "dashboard",
-      "node_modules",
-      "better-sqlite3",
-    ),
-    // Workspace dashboard
-    path.join(workspaceRoot, "dashboard", "node_modules", "better-sqlite3"),
-  ];
-
-  for (const loc of locations) {
-    if (fs.existsSync(loc)) {
-      try {
-        const moduleUrl = pathToFileURL(loc).href;
-        const mod = await import(moduleUrl);
-        return mod.default ?? mod;
-      } catch {
-        // Try next location
-      }
-    }
-  }
-
-  const mod = await import("better-sqlite3");
-  return mod.default ?? mod;
-}
-
-const Database = await findBetterSqlite3();
 
 const STALE_THRESHOLD_MINUTES = 30;
 

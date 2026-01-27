@@ -306,7 +306,7 @@ moltbot cron add "project-sync" "*/30 * * * *" \
 - **Framework:** [Next.js 16](https://nextjs.org/) with App Router
 - **UI:** [React 19](https://react.dev/) + [Tailwind CSS 4](https://tailwindcss.com/)
 - **Components:** [Radix UI](https://www.radix-ui.com/) primitives
-- **Database:** [SQLite](https://sqlite.org/) via [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
+- **Database:** [SQLite](https://sqlite.org/) via [bun:sqlite](https://bun.sh/docs/api/sqlite)
 - **GitHub API:** [@octokit/rest](https://github.com/octokit/rest.js)
 - **Animations:** [Framer Motion](https://www.framer.com/motion/)
 
