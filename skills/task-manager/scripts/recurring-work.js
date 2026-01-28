@@ -145,16 +145,12 @@ function checkStatusSignals(workNotes) {
     const content = (note.content || "").toLowerCase().trim();
 
     // Done signals
-    if (
-      content.includes("status:done") ||
-      content.includes("status:complete") ||
-      content.includes("status:completed")
-    ) {
+    if (/^status:(done|complete|completed)\b/.test(content)) {
       return { done: true, blocked: false, blockedReason: null };
     }
 
     // Blocked signals
-    if (content.includes("status:blocked")) {
+    if (/^status:blocked\b/.test(content)) {
       const reasonMatch = content.match(/status:blocked[:\s]+(.+)/i);
       const reason = reasonMatch ? reasonMatch[1].trim() : "Unknown blocker";
       return { done: false, blocked: true, blockedReason: reason };
@@ -333,14 +329,15 @@ function main() {
             log("warn", `Push failed: ${pushResult.error}`);
           }
 
+          const doneStatus = TASK_STATUS.review || TASK_STATUS.completed;
           db.prepare(
             `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          ).run(TASK_STATUS.completed, inProgressTask.id);
+          ).run(doneStatus, inProgressTask.id);
 
           appendWorkNote(
             db,
             inProgressTask.id,
-            `Task completed and pushed to remote`,
+            `Task ready for review and pushed to remote`,
           );
           actionsTaken.push(
             `Completed: #${inProgressTask.task_number} - ${inProgressTask.text}`,
@@ -453,20 +450,22 @@ function main() {
               const commitMsg = `feat: complete task #${pendingTask.task_number} - ${pendingTask.text.substring(0, 50)}`;
               gitCommit(projectPath, commitMsg);
               gitPush(projectPath);
+              const doneStatus = TASK_STATUS.review || TASK_STATUS.completed;
               db.prepare(
                 `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              ).run(TASK_STATUS.completed, pendingTask.id);
-              appendWorkNote(db, pendingTask.id, "Task completed");
+              ).run(doneStatus, pendingTask.id);
+              appendWorkNote(db, pendingTask.id, "Task ready for review");
               log("info", `Completed task #${pendingTask.task_number}`);
               actionsTaken.push(
                 `Completed: #${pendingTask.task_number} - ${pendingTask.text}`,
               );
             } else if (signals.done && !isDirty) {
               // Mark complete without commit
+              const doneStatus = TASK_STATUS.review || TASK_STATUS.completed;
               db.prepare(
                 `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              ).run(TASK_STATUS.completed, pendingTask.id);
-              appendWorkNote(db, pendingTask.id, "Task completed (no changes)");
+              ).run(doneStatus, pendingTask.id);
+              appendWorkNote(db, pendingTask.id, "Task ready for review (no changes)");
               log(
                 "info",
                 `Completed task #${pendingTask.task_number} (no changes to commit)`,

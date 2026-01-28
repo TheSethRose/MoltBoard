@@ -262,6 +262,11 @@ export const PUT = withErrorHandling(
           ? (work_notes as RawWorkNote[])
           : [work_notes as RawWorkNote];
         const existingNotes = JSON.parse(existing.work_notes || "[]");
+        if (replace_work_notes && existingNotes.length > 0) {
+          console.warn(
+            `[WARN] replace_work_notes=true for task ${id}, wiping ${existingNotes.length} existing notes`,
+          );
+        }
         const updatedNotes = replace_work_notes
           ? normalizeWorkNotes(incomingNotes)
           : mergeWorkNotes(existingNotes, incomingNotes);

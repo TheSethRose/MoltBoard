@@ -14,6 +14,11 @@ import { getWorkspacePath } from "../../../scripts/workspace-path.js";
 const DB_PATH =
   process.env.TASKS_DB_PATH ||
   path.join(getWorkspacePath(), "data", "tasks.db");
+const DEFAULT_APP_URL = "http://localhost:5278";
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.APP_URL ||
+  DEFAULT_APP_URL;
 
 function log(message) {
   const timestamp = new Date().toISOString();
@@ -35,7 +40,7 @@ function queryDb(sql) {
 function syncProject(projectId) {
   try {
     const result = execSync(
-      `curl -s -X GET "http://localhost:5000/api/projects/${projectId}/sync"`,
+      `curl -s -X GET "${APP_URL}/api/projects/${projectId}/sync"`,
       { encoding: "utf8", timeout: 30000 },
     );
     const data = JSON.parse(result);

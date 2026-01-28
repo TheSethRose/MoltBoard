@@ -78,8 +78,10 @@ This document captures the multi-worker task lifecycle so we can implement it on
 
 - Pull from `review`.
 - Review changes and add feedback.
+- Verify the implementation is real (no mocks/placeholders unless explicitly required).
+- Confirm acceptance criteria and end-to-end wiring are met.
 - Add work note: `review:done`.
-- Move to `completed`.
+- Record an activity note with the review decision.
 - If failed, add `review:failed` note and move back to `ready`.
 - Skip if a recent review note exists.
 

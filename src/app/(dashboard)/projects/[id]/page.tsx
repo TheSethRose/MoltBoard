@@ -108,11 +108,47 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     );
   }
 
+  const parseStringArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value as string[];
+    if (typeof value !== "string" || !value.trim()) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      const trimmed = value.trim();
+      const withoutBrackets = trimmed.replace(/^\[|\]$/g, "");
+      if (!withoutBrackets) return [];
+      return withoutBrackets
+        .split(",")
+        .map((item) => item.replace(/^['\"]|['\"]$/g, "").trim())
+        .filter(Boolean);
+    }
+  };
+
+  const parseNumberArray = (value: unknown): number[] => {
+    if (Array.isArray(value)) return value as number[];
+    if (typeof value !== "string" || !value.trim()) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.map((item) => Number(item)).filter((n) => !Number.isNaN(n))
+        : [];
+    } catch {
+      const trimmed = value.trim();
+      const withoutBrackets = trimmed.replace(/^\[|\]$/g, "");
+      if (!withoutBrackets) return [];
+      return withoutBrackets
+        .split(",")
+        .map((item) => Number(item.trim()))
+        .filter((n) => !Number.isNaN(n));
+    }
+  };
+
   // Parse JSON fields
   const parsedTasks = tasks.map((task) => ({
     ...task,
-    tags: task.tags ? JSON.parse(task.tags) : [],
-    blocked_by: task.blocked_by ? JSON.parse(task.blocked_by) : [],
+    tags: parseStringArray(task.tags),
+    blocked_by: parseNumberArray(task.blocked_by),
   }));
 
   const ProjectDetailClient = (await import("./project-detail-client")).default;

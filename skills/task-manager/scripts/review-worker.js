@@ -122,7 +122,15 @@ function requestChanges(taskId, summary, activity) {
   ).run(TASK_STATUS.ready, taskId);
 
   appendWorkNote(db, taskId, `review:failed: ${summary}`);
-  if (activity) appendWorkNote(db, taskId, `activity: ${activity}`);
+  if (activity) {
+    appendWorkNote(db, taskId, `activity: ${activity}`);
+  } else {
+    appendWorkNote(
+      db,
+      taskId,
+      "activity: review completed; decision: changes requested",
+    );
+  }
   console.log(
     `\n✓ Requested changes for task #${taskId} → ${TASK_STATUS.ready}`,
   );
@@ -188,15 +196,23 @@ if (nextTask.work_notes) {
     });
   }
 }
-console.log("\nInstructions:");
-console.log("1) Review work notes and changes.");
-console.log("2) Approve or request changes using one command below.");
+console.log("\n=== REVIEW CHECKLIST (MANDATORY) ===");
+console.log("You MUST complete each step before approving:\n");
+console.log("1. RUN: git status -sb  → List all changed/added files.");
+console.log("2. RUN: cat <filepath>  → Read each changed file.");
+console.log("3. RUN: grep -n 'TODO\\|mock\\|placeholder' <filepath>  → Search for incomplete code.");
+console.log("4. VERIFY: Implementation is complete - not a stub or skeleton.");
+console.log("5. TRACE: API → client → UI (all connected?).\n");
+console.log("⚠️  You MUST execute ONE of these commands before exiting:");
+console.log("   - If ANY mock/placeholder/TODO found → --request-changes");
+console.log("   - If ALL code is real and complete  → --approve\n");
+console.log("DO NOT exit without running --approve or --request-changes.");
 console.log("\nCommands:");
 console.log(
-  `- Approve: node scripts/review-worker.js --approve ${nextTask.id} --summary "<summary>"`,
+  `- Approve: bun review-worker.js --approve ${nextTask.id} --summary "<what was verified>"`,
 );
 console.log(
-  `- Request changes: node scripts/review-worker.js --request-changes ${nextTask.id} --summary "<summary>"`,
+  `- Request changes: bun review-worker.js --request-changes ${nextTask.id} --summary "<file:line evidence>"`,
 );
 
 db.close();

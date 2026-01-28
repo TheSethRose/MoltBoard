@@ -94,7 +94,13 @@ function updateTask(taskId, updates) {
 
 // Helper: Generate auto-fill research prompt
 function generateAutoFillPrompt(task) {
-  return `Research and provide detailed information for this task:
+  return `Research and provide detailed information for this task. Use any available skills/tools to gather helpful information and context, but do NOT update files or perform any side effects.
+
+Constraints:
+- Read-only: no code changes, no file writes, no git actions, no network writes.
+- Do not modify repository state or task data; return information only.
+- Do not fabricate or use placeholder content.
+- If information is missing, return empty arrays/strings and include missing_info.
 
 Task: ${task.text}
 Current Description: ${task.description || "(none)"}
@@ -107,7 +113,7 @@ Please provide:
 4. Any dependencies or prerequisites
 5. Suggested priority (urgent/high/medium/low) with reasoning
 
-Format response as JSON with keys: description, acceptance_criteria (array), approach, dependencies, suggested_priority`;
+Format response as JSON with keys: description, acceptance_criteria (array), approach, dependencies, suggested_priority, missing_info (array)`;
 }
 
 // Helper: Generate closure summary prompt
@@ -118,7 +124,12 @@ function generateClosureSummaryPrompt(task, workNotes, repoState) {
     timestamp: note.timestamp,
   }));
 
-  return `Generate a closure summary for this completed task:
+  return `Generate a closure summary for this completed task.
+
+Constraints:
+- Read-only: no code changes, no file writes, no git actions, no network writes.
+- Use only the provided task details and work notes.
+- Do not fabricate or use placeholder content.
 
 Task #${task.task_number}: ${task.text}
 Description: ${task.description || "(none)"}
@@ -134,7 +145,20 @@ Please provide:
 3. Lessons learned or notes for future work
 4. Any follow-up recommendations
 
-Format response as JSON with keys: executive_summary, key_changes (array), lessons_learned (array), follow_up (array)`;
+Format response as JSON with keys: executive_summary, key_changes (array), lessons_learned (array), follow_up (array), missing_info (array)`;
+}
+
+function extractJson(output) {
+  if (!output || typeof output !== "string") return null;
+  const start = output.indexOf("{");
+  const end = output.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  const candidate = output.slice(start, end + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
 }
 
 // Auto-fill task from research
@@ -165,20 +189,29 @@ proc.on('close', () => console.log(output));
       { encoding: "utf8", timeout: 60000 },
     );
 
-    // Parse research results and update task
-    // For now, generate a placeholder based on task content
-    const autoFillResult = {
-      description: `This task involves ${task.text.toLowerCase()}. The implementation should focus on delivering a clean, maintainable solution that meets the stated requirements.`,
-      acceptance_criteria: [
-        "Task requirements are fully implemented",
-        "Code is tested and functional",
-        "Documentation is updated",
-        "No regressions introduced",
-      ],
-      approach: "Implement the feature following existing code patterns and best practices.",
-      dependencies: [],
-      suggested_priority: task.priority || "medium",
-    };
+    const autoFillResult = extractJson(researchResult);
+    if (!autoFillResult) {
+      appendWorkNote(
+        db,
+        taskId,
+        "research:failed: Could not parse JSON response from research",
+        "system",
+      );
+      error("Research failed: invalid JSON response");
+    }
+
+    if (
+      !autoFillResult.description ||
+      !Array.isArray(autoFillResult.acceptance_criteria)
+    ) {
+      appendWorkNote(
+        db,
+        taskId,
+        "research:failed: Missing required fields in research response",
+        "system",
+      );
+      error("Research failed: missing required fields");
+    }
 
     // Update task with research findings
     const updates = {

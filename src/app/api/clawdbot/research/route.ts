@@ -6,10 +6,17 @@
  * 2. Closure summary: Generates a summary suitable for GitHub issue closure
  * 
  * All responses are structured (JSON) for automatic field mapping.
+ * 
+ * Integration: Uses Clawdbot CLI (`clawdbot agent --message`) since Clawdbot
+ * operates as a local Gateway, not a stateless REST API.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import { withErrorHandling, badRequest, internalError } from "@/lib/api-error-handler";
+
+const execAsync = promisify(exec);
 
 export interface ResearchRequest {
   /** Type of research assistance */
@@ -93,54 +100,122 @@ RULES:
 };
 
 /**
- * Call Clawdbot with the given prompt
+ * Call Clawdbot with the given prompt via CLI
  * 
- * Uses Clawdbot's message sending capability via the Gateway HTTP API.
- * The endpoint should be configured via CLAWDBOT_ENDPOINT env var.
+ * Clawdbot operates as a local Gateway with WebSocket control plane.
+ * For API routes, we use the CLI interface: `clawdbot agent --local --agent main --message "..."`
+ * The --local flag runs the embedded agent with model provider API keys from env.
+ * The --json flag returns structured output with payloads array.
  */
 async function callClawdbot(prompt: string): Promise<{ success: boolean; response?: string; error?: string }> {
-  const endpoint = process.env.CLAWDBOT_ENDPOINT || "http://localhost:18789";
-  const model = process.env.CLAWDBOT_MODEL || "minimax/MiniMax-M2.1";
+  const timeout = parseInt(process.env.CLAWDBOT_TIMEOUT || "120000", 10);
+  const thinkingLevel = process.env.CLAWDBOT_THINKING || "low";
+  const agentId = process.env.CLAWDBOT_AGENT || "main";
+  const sessionId = process.env.CLAWDBOT_SESSION_ID || "research";
 
+  // Write prompt to temp file to avoid shell escaping issues
+  const tempFile = `/tmp/clawdbot-prompt-${Date.now()}.txt`;
+  const fs = await import("node:fs/promises");
+  
+  // Wrap prompt with JSON-only instruction
+  const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
+  
   try {
-    const response = await fetch(`${endpoint}/api/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message: prompt,
-        model: model,
-        system: "You are a read-only research assistant. Never write files, never make git changes, never access URLs.",
-        stream: false,
-      }),
-    });
+    await fs.writeFile(tempFile, wrappedPrompt, "utf-8");
+    
+    // Build CLI command - use --local for embedded agent, --json for structured output
+    // --agent is required to specify which agent to use
+    // --session-id ensures we reuse the same session instead of creating a new one
+    // Use full path for reliability when running from server context
+    const clawdbotPath = process.env.CLAWDBOT_PATH || "/opt/homebrew/bin/clawdbot";
+    const cmd = `${clawdbotPath} agent --local --json --thinking ${thinkingLevel} --agent ${agentId} --session-id ${sessionId} --message "$(cat ${tempFile})" 2>&1`;
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `Clawdbot API error: ${response.status} ${response.statusText}`,
-      };
+    let stdout = "";
+    let stderr = "";
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        ({ stdout, stderr } = await execAsync(cmd, {
+          timeout,
+          maxBuffer: 2 * 1024 * 1024, // 2MB buffer
+          env: { ...process.env, NO_COLOR: "1" },
+        }));
+        break;
+      } catch (execError) {
+        const execErr = execError as { message?: string; stdout?: string; stderr?: string };
+        const details = [execErr.message, execErr.stdout, execErr.stderr].filter(Boolean).join(" | ");
+        const isLocked = details.includes("session file locked");
+        if (isLocked && attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        throw execError;
+      }
     }
 
-    const data = await response.json();
+    // Clean up temp file
+    await fs.unlink(tempFile).catch(() => {});
 
-    // Clawdbot returns the assistant's message in the response
-    // The exact format depends on the Gateway version
-    const assistantMessage =
-      data.message ||
-      data.content ||
-      data.response ||
-      (typeof data === "string" ? data : JSON.stringify(data));
-
-    return {
-      success: true,
-      response: typeof assistantMessage === "string" ? assistantMessage : JSON.stringify(assistantMessage),
-    };
+    const output = stdout || stderr || "";
+    
+    // With --json flag, clawdbot returns JSON with payloads array
+    // Format: { "payloads": [{ "text": "...", "mediaUrl": null }], "meta": {...} }
+    try {
+      const cliResult = JSON.parse(output);
+      
+      // Extract text from payloads array
+      const agentResponse = cliResult.payloads?.[0]?.text || 
+                           cliResult.response || 
+                           cliResult.message || 
+                           cliResult.content || 
+                           "";
+      
+      // Extract JSON from agent response (may contain markdown or extra text)
+      const jsonMatch = String(agentResponse).match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return {
+          success: true,
+          response: jsonMatch[0],
+        };
+      }
+      
+      return {
+        success: false,
+        error: `No JSON found in agent response: ${String(agentResponse).substring(0, 300)}`,
+      };
+    } catch {
+      // If CLI output isn't JSON, try to extract JSON from raw output
+      const jsonMatch = output.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return {
+          success: true,
+          response: jsonMatch[0],
+        };
+      }
+      
+      return {
+        success: false,
+        error: `Failed to parse Clawdbot output: ${output.substring(0, 500)}`,
+      };
+    }
   } catch (error) {
+    // Clean up temp file on error
+    const fs = await import("node:fs/promises");
+    await fs.unlink(tempFile).catch(() => {});
+    
+    const err = error as { message?: string; code?: string; killed?: boolean; stdout?: string; stderr?: string };
+    if (err.killed) {
+      return {
+        success: false,
+        error: `Clawdbot timed out after ${timeout}ms`,
+      };
+    }
+    
+    // Include stdout/stderr in error for debugging
+    const details = [err.message, err.stdout, err.stderr].filter(Boolean).join(" | ");
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to call Clawdbot",
+      error: details || "Failed to call Clawdbot CLI",
     };
   }
 }

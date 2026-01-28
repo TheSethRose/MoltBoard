@@ -27,6 +27,7 @@ import {
   Link2,
   Tag,
   Type,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +36,7 @@ import {
   formatStatusLabel,
 } from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
+import { ResearchButton, type TaskFormResponse } from "@/components/ui/research-button";
 import useSWR, { type SWRConfiguration } from "swr";
 
 interface Task {
@@ -490,6 +492,22 @@ function TaskModal({
     }
   };
 
+  // Handle research assistant completion - auto-fill form fields
+  const handleResearchComplete = (data: TaskFormResponse) => {
+    // Set the generated fields
+    setText(data.title);
+    setNotes(data.goal + (data.scope ? `\n\n## Scope\n${Array.isArray(data.scope) ? data.scope.join('\n') : data.scope}` : ""));
+    
+    // Set priority
+    setPriority(data.priority);
+    
+    // Set tags
+    setTags(data.tags);
+    
+    // Focus the title input to let user review
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border w-[calc(100%-2rem)] sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -513,6 +531,16 @@ function TaskModal({
               <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
                 <Type size={14} className="text-muted-foreground" />
                 Title
+                {!isEditMode && (
+                  <ResearchButton
+                    mode="task-form"
+                    input={text || notes}
+                    onTaskFormComplete={handleResearchComplete}
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs"
+                  />
+                )}
               </label>
               <div className={cn(titleError && "animate-shake")}>
                 <input
@@ -661,6 +689,11 @@ function TaskModal({
               onAddNote={handleAddNote}
               disabled={!isEditMode}
               className="flex-1 h-full min-h-0"
+              enableClosureSummary={isEditMode && status === "completed"}
+              taskTitle={task?.text || ""}
+              onClosureSummarySave={async (content) => {
+                await handleAddNote(content);
+              }}
             />
           </div>
         </div>

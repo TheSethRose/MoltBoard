@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { Send, Bot, User, Clock, Loader2 } from "lucide-react";
+import { Send, Bot, User, Clock, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ResearchButton, ClosureSummaryResult, type ClosureSummaryResponse } from "./research-button";
 
 interface WorkNote {
   id: string;
@@ -20,6 +21,12 @@ interface WorkNotesProps {
   onAddNote: (content: string) => Promise<void>;
   disabled?: boolean;
   className?: string;
+  /** Optional: Enable closure summary for completed tasks */
+  enableClosureSummary?: boolean;
+  /** Optional: Task title for closure summary generation */
+  taskTitle?: string;
+  /** Optional: Callback when closure summary is saved */
+  onClosureSummarySave?: (summary: string) => Promise<void>;
 }
 
 // Normalize notes to ensure they have all required fields
@@ -49,10 +56,15 @@ export function WorkNotes({
   onAddNote,
   disabled = false,
   className,
+  enableClosureSummary = false,
+  taskTitle = "",
+  onClosureSummarySave,
 }: WorkNotesProps) {
   const notes = normalizeNotes(rawNotes);
   const [newNote, setNewNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showClosureSummary, setShowClosureSummary] = useState(false);
+  const [closureResult, setClosureResult] = useState<ClosureSummaryResponse | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -75,6 +87,23 @@ export function WorkNotes({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleClosureComplete = (data: ClosureSummaryResponse) => {
+    setClosureResult(data);
+  };
+
+  const handleSaveClosureSummary = async () => {
+    if (!closureResult || !onClosureSummarySave) return;
+    
+    const summaryText = `## Closure Summary\n\n${closureResult.summary}\n\n${
+      closureResult.keyChanges.length > 0
+        ? `### Key Changes\n${closureResult.keyChanges.map((c: string) => `- ${c}`).join('\n')}\n\n`
+        : ""
+    }${closureResult.notesForRecord ? `### Notes\n${closureResult.notesForRecord}` : ""}`;
+    
+    await onClosureSummarySave(summaryText);
+    setShowClosureSummary(false);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -133,7 +162,52 @@ export function WorkNotes({
             ({notes.length})
           </span>
         </div>
+        {enableClosureSummary && taskTitle && (
+          <button
+            type="button"
+            onClick={() => setShowClosureSummary(!showClosureSummary)}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          >
+            {showClosureSummary ? (
+              <>
+                <CheckCircle2 size={12} />
+                Hide Summary
+              </>
+            ) : (
+              <>
+                <Sparkles size={12} />
+                Generate Summary
+              </>
+            )}
+          </button>
+        )}
       </div>
+
+      {/* Closure Summary Panel */}
+      {enableClosureSummary && showClosureSummary && (
+        <div className="border-b border-border p-3 bg-muted/20">
+          {closureResult ? (
+            <ClosureSummaryResult
+              data={closureResult}
+              onSave={handleSaveClosureSummary}
+              onCopy={() => {}}
+            />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Generate a closure summary for this completed task.
+              </p>
+              <ResearchButton
+                mode="closure-summary"
+                input={taskTitle}
+                notes={notes.map(n => n.content).join("\n\n")}
+                onClosureComplete={handleClosureComplete}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes Feed */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
