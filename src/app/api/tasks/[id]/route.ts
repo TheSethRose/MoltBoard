@@ -6,6 +6,7 @@ import {
   appendWorkNote,
   mergeWorkNotes,
   normalizeWorkNotes,
+  createFieldChangeNote,
   type RawWorkNote,
 } from "@/lib/work-notes";
 import {
@@ -136,6 +137,9 @@ export const PUT = withErrorHandling(
 
       // Handle work_notes - either append, merge, or replace
       // WARNING: replace_work_notes=true will wipe all existing notes!
+      let currentWorkNotes = JSON.parse(existing.work_notes || "[]");
+      let workNotesChanged = false;
+
       if (append_work_note !== undefined && append_work_note) {
         if (work_notes === undefined) {
           await releaseDb(db);
@@ -144,27 +148,70 @@ export const PUT = withErrorHandling(
             "WORK_NOTES_REQUIRED",
           );
         }
-        const updatedNotes = appendWorkNote(
-          JSON.parse(existing.work_notes || "[]"),
+        currentWorkNotes = appendWorkNote(
+          currentWorkNotes,
           work_notes as RawWorkNote,
         );
-        updates.push("work_notes = ?");
-        paramsList.push(JSON.stringify(updatedNotes));
+        workNotesChanged = true;
       } else if (work_notes !== undefined) {
         const incomingNotes = Array.isArray(work_notes)
           ? (work_notes as RawWorkNote[])
           : [work_notes as RawWorkNote];
-        const existingNotes = JSON.parse(existing.work_notes || "[]");
-        if (replace_work_notes && existingNotes.length > 0) {
+        if (replace_work_notes && currentWorkNotes.length > 0) {
           console.warn(
-            `[WARN] replace_work_notes=true for task ${id}, wiping ${existingNotes.length} existing notes`,
+            `[WARN] replace_work_notes=true for task ${id}, wiping ${currentWorkNotes.length} existing notes`,
           );
         }
-        const updatedNotes = replace_work_notes
+        currentWorkNotes = replace_work_notes
           ? normalizeWorkNotes(incomingNotes)
-          : mergeWorkNotes(existingNotes, incomingNotes);
+          : mergeWorkNotes(currentWorkNotes, incomingNotes);
+        workNotesChanged = true;
+      }
+
+      // Auto-log field changes as system work notes
+      const fieldChanges: RawWorkNote[] = [];
+
+      if (status !== undefined && status !== existing.status) {
+        const note = createFieldChangeNote("status", existing.status, status);
+        if (note) fieldChanges.push(note);
+      }
+
+      if (priority !== undefined && priority !== existing.priority) {
+        const note = createFieldChangeNote(
+          "priority",
+          existing.priority,
+          priority,
+        );
+        if (note) fieldChanges.push(note);
+      }
+
+      if (tags !== undefined) {
+        const existingTags = JSON.parse(existing.tags || "[]");
+        const note = createFieldChangeNote("tags", existingTags, tags);
+        if (note) fieldChanges.push(note);
+      }
+
+      if (project_id !== undefined && project_id !== existing.project_id) {
+        const note = createFieldChangeNote(
+          "project",
+          existing.project_id,
+          project_id,
+        );
+        if (note) fieldChanges.push(note);
+      }
+
+      // Append all field change notes
+      if (fieldChanges.length > 0) {
+        for (const note of fieldChanges) {
+          currentWorkNotes = appendWorkNote(currentWorkNotes, note);
+        }
+        workNotesChanged = true;
+      }
+
+      // Update work_notes if changed
+      if (workNotesChanged) {
         updates.push("work_notes = ?");
-        paramsList.push(JSON.stringify(updatedNotes));
+        paramsList.push(JSON.stringify(currentWorkNotes));
       }
 
       // Validation: Require work_notes when changing to completed (BEFORE update)
