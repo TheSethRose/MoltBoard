@@ -1,14 +1,17 @@
 "use client";
 
-import { useSyncExternalStore, useCallback } from "react";
+import { useSyncExternalStore, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   LayoutList,
   Folder,
   Settings2,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -53,10 +56,21 @@ function useLocalStorage(
 
 export function Sidebar({ children }: SidebarProps) {
   const pathname = usePathname();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
+  };
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -104,9 +118,38 @@ export function Sidebar({ children }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-2">
+          {!collapsed && mounted && (
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-3 px-3 py-2 min-h-[40px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun size={18} aria-hidden="true" />
+              ) : (
+                <Moon size={18} aria-hidden="true" />
+              )}
+              <span>
+                {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+              </span>
+            </button>
+          )}
+          {collapsed && mounted && (
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-center px-3 py-2 min-h-[40px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+            >
+              {resolvedTheme === "dark" ? (
+                <Sun size={18} />
+              ) : (
+                <Moon size={18} />
+              )}
+            </button>
+          )}
           {!collapsed && (
-            <p className="text-xs text-muted-foreground">v2026.1.23</p>
+            <p className="text-xs text-muted-foreground pt-2">v2026.1.23</p>
           )}
         </div>
       </aside>

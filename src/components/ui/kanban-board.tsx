@@ -14,6 +14,7 @@ import {
   CheckSquare,
 } from "lucide-react";
 import { FilterBar, type KanbanProject as FilterKanbanProject } from "./kanban-board/filter-bar";
+import { KanbanColumn } from "./kanban-board/kanban-column";
 export type KanbanProject = FilterKanbanProject;
 
 export interface KanbanTask {

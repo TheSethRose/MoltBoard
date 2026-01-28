@@ -146,21 +146,6 @@ export const POST = withErrorHandling(
   { context: { route: "/api/tasks", method: "POST" } },
 );
 
-function appendNote(
-  existingNotes: RawWorkNote[] | undefined,
-  note: RawWorkNote,
-  defaultAuthor: WorkNote["author"] = "system",
-) {
-  const normalizedExisting = normalizeWorkNotes(existingNotes, {
-    defaultAuthor,
-  });
-  const normalizedNote = normalizeWorkNote(note, {
-    defaultAuthor,
-    fillTimestamp: true,
-  });
-  return [...normalizedExisting, normalizedNote];
-}
-
 // PUT - Update task
 export const PUT = withErrorHandling(
   async (req: NextRequest): Promise<NextResponse> => {
@@ -252,7 +237,7 @@ export const PUT = withErrorHandling(
             "WORK_NOTES_REQUIRED",
           );
         }
-        const updatedNotes = appendNote(
+        const updatedNotes = appendWorkNote(
           JSON.parse(existing.work_notes || "[]"),
           work_notes as RawWorkNote,
         );
