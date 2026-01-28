@@ -3,39 +3,16 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
+import {
+  TAG_COLORS as DEFAULT_TAG_COLORS,
+  PRIORITY_COLORS as DEFAULT_PRIORITY_COLORS,
+  TAG_OPTIONS,
+  PRIORITY_OPTIONS,
+} from "@/lib/constants";
 
-const DEFAULT_TAG_COLORS: Record<string, string> = {
-  bug: "bg-red-500/20 text-red-400 border-red-500/30",
-  feature: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  task: "bg-green-500/20 text-green-400 border-green-500/30",
-  chore: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-  research: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  spike: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  maintenance: "bg-slate-500/20 text-slate-400 border-slate-500/30",
-  safety: "bg-red-500/20 text-red-400 border-red-500/30",
-  audit: "bg-green-500/20 text-green-400 border-green-500/30",
-};
+const ALL_TAGS = TAG_OPTIONS;
 
-const DEFAULT_PRIORITY_COLORS: Record<string, string> = {
-  urgent: "text-red-400",
-  high: "text-orange-400",
-  medium: "text-yellow-400",
-  low: "text-green-400",
-};
-
-const ALL_TAGS = [
-  "bug",
-  "feature",
-  "task",
-  "chore",
-  "research",
-  "spike",
-  "maintenance",
-  "safety",
-  "audit",
-];
-
-const ALL_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
+const ALL_PRIORITIES = PRIORITY_OPTIONS.map((p) => p.value);
 
 type BlockedFilter = "all" | "unblocked" | "blocked";
 

@@ -383,6 +383,22 @@ export function TasksClient({
           onDeselectAll={() => {
             setSelectedTaskIds(new Set());
           }}
+          onBulkMove={async (toStatus) => {
+            for (const taskId of selectedTaskIds) {
+              const task = tasks.find((t) => t.id === taskId);
+              if (task) {
+                await moveTask(taskId, task.status, toStatus);
+              }
+            }
+            setSelectedTaskIds(new Set());
+          }}
+          onBulkDelete={async () => {
+            const idsToDelete = Array.from(selectedTaskIds);
+            for (const taskId of idsToDelete) {
+              await deleteTask(taskId);
+            }
+            setSelectedTaskIds(new Set());
+          }}
           onTaskEdit={openEditModal}
           onTaskDelete={confirmDeleteTask}
           className="flex-1 min-h-0 flex flex-col"

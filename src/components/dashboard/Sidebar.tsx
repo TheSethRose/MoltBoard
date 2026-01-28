@@ -175,7 +175,11 @@ export function Sidebar({ children }: SidebarProps) {
                   type="button"
                   onClick={() => setListCollapsed((prev) => !prev)}
                   aria-expanded={!listCollapsed}
-                  aria-label={listCollapsed ? "Expand pinned & recent" : "Collapse pinned & recent"}
+                  aria-label={
+                    listCollapsed
+                      ? "Expand pinned & recent"
+                      : "Collapse pinned & recent"
+                  }
                   className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <ChevronDown
@@ -192,33 +196,33 @@ export function Sidebar({ children }: SidebarProps) {
             listMode === "pinned" &&
             pinnedProjects.length > 0 &&
             !collapsed && (
-            <div className="mb-4">
-              <div className="space-y-1">
-                {pinnedProjects.map((project) => {
-                  const isActive = pathname === `/projects/${project.id}`;
-                  return (
-                    <Link
-                      key={project.id}
-                      href={`/projects/${project.id}`}
-                      className={`flex items-center gap-3 px-3 py-2 min-h-[40px] rounded-md transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      }`}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <Pin
-                        size={16}
-                        className="text-primary"
-                        aria-hidden="true"
-                      />
-                      <span className="truncate">{project.name}</span>
-                    </Link>
-                  );
-                })}
+              <div className="mb-4">
+                <div className="space-y-1">
+                  {pinnedProjects.map((project) => {
+                    const isActive = pathname === `/projects/${project.id}`;
+                    return (
+                      <Link
+                        key={project.id}
+                        href={`/projects/${project.id}`}
+                        className={`flex items-center gap-3 px-3 py-2 min-h-[40px] rounded-md transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        }`}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <Pin
+                          size={16}
+                          className="text-primary"
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Recent Items */}
           {!collapsed && !listCollapsed && listMode === "recent" && (
@@ -226,10 +230,7 @@ export function Sidebar({ children }: SidebarProps) {
           )}
 
           {!collapsed && (
-            <div
-              className="mx-3 my-2 h-px bg-border/70"
-              aria-hidden="true"
-            />
+            <div className="mx-3 my-2 h-px bg-border/70" aria-hidden="true" />
           )}
 
           {/* Main Navigation Items */}

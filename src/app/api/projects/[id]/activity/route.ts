@@ -58,6 +58,20 @@ export const GET = withErrorHandling(
     );
     const offset = parseInt(url.searchParams.get("offset") || "0", 10);
     const typeFilter = url.searchParams.get("type"); // task_note, status_change, system
+    const authorFilter = url.searchParams.get("author"); // agent, system, human
+    const dateFrom = url.searchParams.get("dateFrom");
+    const dateTo = url.searchParams.get("dateTo");
+    const sortOrder = url.searchParams.get("sortOrder") || "desc"; // desc, asc
+
+    // Validate date format and parse
+    const parseDate = (dateStr: string | null): Date | null => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    const fromDate = parseDate(dateFrom);
+    const toDate = parseDate(dateTo);
 
     // Fetch tasks for this project with their work_notes
     const tasks = db
@@ -124,6 +138,14 @@ export const GET = withErrorHandling(
         // Skip if timestamp is in the future (data issue)
         if (timestamp > now) continue;
 
+        // Apply date filters
+        if (fromDate && timestamp < fromDate) continue;
+        if (toDate) {
+          const endOfDay = new Date(toDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (timestamp > endOfDay) continue;
+        }
+
         const entry: ActivityEntry = {
           id: noteId,
           type: "task_note",
@@ -137,9 +159,11 @@ export const GET = withErrorHandling(
         };
 
         // Apply type filter if specified
-        if (!typeFilter || entry.type === typeFilter) {
-          activityMap.set(noteId, entry);
-        }
+        if (typeFilter && entry.type !== typeFilter) continue;
+        // Apply author filter if specified
+        if (authorFilter && entry.author !== authorFilter) continue;
+
+        activityMap.set(noteId, entry);
       }
 
       // Add status change activity
@@ -148,18 +172,48 @@ export const GET = withErrorHandling(
         const statusTimestamp = new Date(task.updated_at);
 
         if (statusTimestamp <= now) {
-          const entry: ActivityEntry = {
-            id: statusChangeId,
-            type: "status_change",
-            task_id: task.id,
-            task_number: task.task_number,
-            task_title: task.text,
-            content: `Status changed to ${task.status}`,
-            author: "system",
-            timestamp: statusTimestamp.toISOString(),
-            project_id: projectId,
-          };
-          activityMap.set(statusChangeId, entry);
+          // Apply date filters
+          if (fromDate && statusTimestamp < fromDate) {
+            // Skip - continue to next task
+          } else if (toDate) {
+            const endOfDay = new Date(toDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (statusTimestamp > endOfDay) {
+              // Skip - continue to next task
+            } else {
+              const entry: ActivityEntry = {
+                id: statusChangeId,
+                type: "status_change",
+                task_id: task.id,
+                task_number: task.task_number,
+                task_title: task.text,
+                content: `Status changed to ${task.status}`,
+                author: "system",
+                timestamp: statusTimestamp.toISOString(),
+                project_id: projectId,
+              };
+              // Apply author filter (status changes are always "system")
+              if (!authorFilter || entry.author === authorFilter) {
+                activityMap.set(statusChangeId, entry);
+              }
+            }
+          } else {
+            const entry: ActivityEntry = {
+              id: statusChangeId,
+              type: "status_change",
+              task_id: task.id,
+              task_number: task.task_number,
+              task_title: task.text,
+              content: `Status changed to ${task.status}`,
+              author: "system",
+              timestamp: statusTimestamp.toISOString(),
+              project_id: projectId,
+            };
+            // Apply author filter (status changes are always "system")
+            if (!authorFilter || entry.author === authorFilter) {
+              activityMap.set(statusChangeId, entry);
+            }
+          }
         }
       }
     }
@@ -171,6 +225,14 @@ export const GET = withErrorHandling(
 
       // Skip if timestamp is in the future (data issue)
       if (timestamp > now) continue;
+
+      // Apply date filters
+      if (fromDate && timestamp < fromDate) continue;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (timestamp > endOfDay) continue;
+      }
 
       const entry: ActivityEntry = {
         id: activityId,
@@ -185,17 +247,21 @@ export const GET = withErrorHandling(
       };
 
       // Apply type filter if specified
-      if (!typeFilter || entry.type === typeFilter) {
-        activityMap.set(activityId, entry);
-      }
+      if (typeFilter && entry.type !== typeFilter) continue;
+      // Apply author filter if specified
+      if (authorFilter && entry.author !== authorFilter) continue;
+
+      activityMap.set(activityId, entry);
     }
 
-    // Sort by timestamp descending (newest first) and limit
-    const activities = Array.from(activityMap.values())
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      )
+    // Sort by timestamp and limit
+    let activities = Array.from(activityMap.values());
+    activities = activities
+      .sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+      })
       .slice(0, limit);
 
     // Get total count for pagination

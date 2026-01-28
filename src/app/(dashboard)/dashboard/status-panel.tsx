@@ -196,9 +196,7 @@ export function StatusPanel() {
         </p>
       </header>
 
-      {error && (
-        <div className="text-sm text-destructive">{error}</div>
-      )}
+      {error && <div className="text-sm text-destructive">{error}</div>}
 
       {/* Bento Grid Layout for System Metrics */}
       <div className="grid grid-cols-4 grid-rows-[auto_auto_auto] gap-3">
@@ -351,7 +349,8 @@ export function StatusPanel() {
                   className="text-xs text-muted-foreground"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  {formatBytes(data.memory.heapUsed)} / {formatBytes(data.memory.heapLimit)}
+                  {formatBytes(data.memory.heapUsed)} /{" "}
+                  {formatBytes(data.memory.heapLimit)}
                 </p>
               </div>
               <Progress
@@ -441,7 +440,8 @@ export function StatusPanel() {
                   <p className="text-2xl font-bold text-foreground">
                     {metricsData.today.total > 0
                       ? Math.round(
-                          (metricsData.today.completed / metricsData.today.total) *
+                          (metricsData.today.completed /
+                            metricsData.today.total) *
                             100,
                         )
                       : 0}

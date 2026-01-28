@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Task } from "@/app/(dashboard)/tasks/types";
-import { Project } from "@/app/(dashboard)/tasks/types";
+import { Task, Project } from "@/app/(dashboard)/tasks/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -14,6 +13,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTaskStatuses, formatStatusLabel } from "@/lib/task-statuses";
 
 type SortField = "order" | "created" | "updated" | "due" | "priority";
 type SortDirection = "asc" | "desc";
@@ -27,13 +27,15 @@ interface TaskListViewProps {
   onTaskToggleSelect: (taskId: number) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  onBulkMove?: (status: Task["status"]) => Promise<void> | void;
+  onBulkDelete?: () => Promise<void> | void;
   onTaskEdit: (task: Task) => void;
   onTaskDelete: (taskId: number) => void;
   className?: string;
 }
 
 const SORT_OPTIONS: { field: SortField; label: string }[] = [
-  { field: "order", label: "Custom" },
+  { field: "order", label: "Task order" },
   { field: "created", label: "Created" },
   { field: "updated", label: "Updated" },
   { field: "due", label: "Due" },
@@ -56,12 +58,16 @@ export function TaskListView({
   onTaskToggleSelect,
   onSelectAll,
   onDeselectAll,
+  onBulkMove,
+  onBulkDelete,
   onTaskEdit,
   onTaskDelete,
   className,
 }: TaskListViewProps) {
   const [sortField, setSortField] = useState<SortField>("order");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [bulkMoveStatus, setBulkMoveStatus] = useState("");
+  const statusOptions = getTaskStatuses();
 
   // Filter tasks by project
   const filteredTasks = useMemo(() => {
@@ -170,7 +176,7 @@ export function TaskListView({
 
           {/* Selection Actions */}
           {sortedTasks.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant="ghost"
                 size="sm"
@@ -190,13 +196,56 @@ export function TaskListView({
               <span className="text-xs text-muted-foreground">
                 {selectedTaskIds.size} selected
               </span>
+              {selectedTaskIds.size > 0 && (onBulkMove || onBulkDelete) && (
+                <div className="flex items-center gap-2">
+                  {onBulkMove && (
+                    <Select
+                      value={bulkMoveStatus}
+                      onChange={(e) => {
+                        const value = e.target.value as Task["status"] | "";
+                        setBulkMoveStatus(value);
+                        if (value) {
+                          onBulkMove(value);
+                          setBulkMoveStatus("");
+                        }
+                      }}
+                      className="h-8 text-xs"
+                    >
+                      <option value="">Move to…</option>
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {formatStatusLabel(status)}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                  {onBulkDelete && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Delete ${selectedTaskIds.size} selected task(s)?`,
+                          )
+                        ) {
+                          onBulkDelete();
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      Delete Selected
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Sort Options */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Sort:</span>
+          <span className="text-xs text-muted-foreground">Sort by:</span>
           {SORT_OPTIONS.map((option) => (
             <Button
               key={option.field}
@@ -222,7 +271,7 @@ export function TaskListView({
             No tasks found
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="sticky top-0 bg-card border-b border-border">
               <tr>
                 <th className="w-10 p-3 text-left">
@@ -237,10 +286,18 @@ export function TaskListView({
                   />
                 </th>
                 <th className="p-3 text-left text-sm font-medium">Task</th>
-                <th className="p-3 text-left text-sm font-medium">Status</th>
-                <th className="p-3 text-left text-sm font-medium">Priority</th>
-                <th className="p-3 text-left text-sm font-medium">Project</th>
-                <th className="p-3 text-left text-sm font-medium">Tags</th>
+                <th className="w-28 p-3 text-left text-sm font-medium">
+                  Status
+                </th>
+                <th className="w-28 p-3 text-left text-sm font-medium">
+                  Priority
+                </th>
+                <th className="hidden md:table-cell w-40 p-3 text-left text-sm font-medium">
+                  Project
+                </th>
+                <th className="hidden lg:table-cell w-56 p-3 text-left text-sm font-medium">
+                  Tags
+                </th>
                 <th className="w-10 p-3"></th>
               </tr>
             </thead>
@@ -262,16 +319,16 @@ export function TaskListView({
                       aria-label={`Select task ${task.task_number}`}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 min-w-0">
                     <button
                       onClick={() => onTaskEdit(task)}
-                      className="text-left hover:text-primary transition-colors"
+                      className="text-left hover:text-primary transition-colors w-full"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
                         <span className="font-mono text-xs text-muted-foreground">
                           #{task.task_number}
                         </span>
-                        <span className="font-medium truncate max-w-[300px]">
+                        <span className="font-medium line-clamp-2 min-w-0">
                           {task.text}
                         </span>
                       </div>
@@ -296,14 +353,14 @@ export function TaskListView({
                       </Badge>
                     )}
                   </td>
-                  <td className="p-3">
+                  <td className="hidden md:table-cell p-3">
                     {task.project_id && (
-                      <span className="text-sm text-muted-foreground truncate max-w-[150px] inline-block">
+                      <span className="text-sm text-muted-foreground truncate block">
                         {getProjectName(task.project_id)}
                       </span>
                     )}
                   </td>
-                  <td className="p-3">
+                  <td className="hidden lg:table-cell p-3">
                     <div className="flex flex-wrap gap-1">
                       {(task.tags || []).slice(0, 3).map((tag) => (
                         <Badge
