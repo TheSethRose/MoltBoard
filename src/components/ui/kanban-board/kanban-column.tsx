@@ -7,7 +7,7 @@ import type {
   KanbanColumn as KanbanColumnType,
 } from "./types";
 import { TaskCard } from "./task-card";
-import { CheckSquare, Square, Plus } from "lucide-react";
+import { CheckSquare, Square, Plus, ClipboardList } from "lucide-react";
 
 interface KanbanColumnProps {
   column: KanbanColumnType;
@@ -157,7 +157,7 @@ export function KanbanColumn({
 
         {tasks.length === 0 && (
           <div
-            className="flex min-h-[60px] items-center justify-center text-xs text-muted-foreground border-2 border-dashed border-border/50 rounded"
+            className="flex flex-col min-h-[80px] items-center justify-center gap-2 px-3 py-4 text-center border-2 border-dashed border-border/50 rounded-md bg-muted/20 transition-colors hover:bg-muted/30"
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
@@ -169,7 +169,19 @@ export function KanbanColumn({
               onDrop(e, column.id, 0);
             }}
           >
-            {column.tasks.length > 0 ? "No matching tasks" : "No tasks"}
+            <ClipboardList
+              size={24}
+              className="text-muted-foreground/60"
+              aria-hidden="true"
+            />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                {column.tasks.length > 0 ? "No matching tasks" : "No tasks yet"}
+              </span>
+              <span className="text-[10px] text-muted-foreground/70">
+                Drag a task here or add a new one
+              </span>
+            </div>
           </div>
         )}
       </div>
