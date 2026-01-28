@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import path from "path";
 import { getWorkspacePath } from "@/lib/workspace-path";
+import { Mutex } from "async-mutex";
 
 const DB_PATH = path.join(getWorkspacePath(), "data", "tasks.db");
 
@@ -9,38 +10,45 @@ const POOL_SIZE = 5;
 const pool: Array<Database | null> = [];
 const inUse: boolean[] = new Array(POOL_SIZE).fill(false);
 
+// Mutex to prevent race conditions when acquiring connections
+const poolMutex = new Mutex();
+
 /**
  * Get a connection from the pool.
- * Uses a simple FIFO approach with busy-wait fallback.
+ * Uses a mutex to ensure thread-safe access to the pool.
  */
-export function getDb(): Database {
-  // First, try to find an available connection
-  for (let i = 0; i < POOL_SIZE; i++) {
-    const db = pool[i];
-    if (!inUse[i] && db) {
-      inUse[i] = true;
-      return db;
+export async function getDb(): Promise<Database> {
+  return await poolMutex.runExclusive(() => {
+    // First, try to find an available connection
+    for (let i = 0; i < POOL_SIZE; i++) {
+      const db = pool[i];
+      if (!inUse[i] && db) {
+        inUse[i] = true;
+        return db;
+      }
     }
-  }
 
-  // If no available connection, create a new one (fallback)
-  // In production, you might want to wait or throw instead
-  const db = new Database(DB_PATH);
-  inUse.push(true);
-  pool.push(db);
-  return db;
+    // If no available connection, create a new one (fallback)
+    const db = new Database(DB_PATH);
+    inUse.push(true);
+    pool.push(db);
+    return db;
+  });
 }
 
 /**
  * Return a connection to the pool.
+ * Uses a mutex to ensure thread-safe release.
  */
-export function releaseDb(db: Database): void {
-  for (let i = 0; i < pool.length; i++) {
-    if (pool[i] === db) {
-      inUse[i] = false;
-      return;
+export async function releaseDb(db: Database): Promise<void> {
+  await poolMutex.runExclusive(() => {
+    for (let i = 0; i < pool.length; i++) {
+      if (pool[i] === db) {
+        inUse[i] = false;
+        return;
+      }
     }
-  }
+  });
 }
 
 /**

@@ -175,7 +175,7 @@ export const GET = withErrorHandling(
       );
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     try {
       const project = db
@@ -348,7 +348,7 @@ export const GET = withErrorHandling(
         throw badRequest(err.message, err.code || "GITHUB_API_ERROR");
       }
     } finally {
-      releaseDb(db);
+      await releaseDb(db);
     }
   },
   { context: { route: "/api/projects/[id]/github-issues", method: "GET" } },

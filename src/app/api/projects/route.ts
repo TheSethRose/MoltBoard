@@ -108,7 +108,7 @@ async function cloneRepo(owner: string, repo: string, localPath: string) {
 export const GET = withErrorHandling(
   async (): Promise<NextResponse> => {
     try {
-      const db = getDb();
+      const db = await getDb();
 
       const projects = db
         .prepare(
@@ -143,7 +143,7 @@ export const GET = withErrorHandling(
         )
         .all() as { project_id: number; status: string; tags: string }[];
 
-      releaseDb(db);
+      await releaseDb(db);
 
       const stats = new Map<
         number,
@@ -239,7 +239,7 @@ export const POST = withErrorHandling(
         throw badRequest("Project name is required", "INVALID_PROJECT_NAME");
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       const result = db
         .prepare(
@@ -267,7 +267,7 @@ export const POST = withErrorHandling(
         | undefined;
 
       if (!project) {
-        releaseDb(db);
+        await releaseDb(db);
         throw new Error("Failed to retrieve created project");
       }
 
@@ -307,7 +307,7 @@ export const POST = withErrorHandling(
       if (githubUrlTrimmed && !isLocalOnly) {
         const parsed = parseGitHubUrl(githubUrlTrimmed);
         if (!parsed) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest("Invalid GitHub URL format", "INVALID_GITHUB_URL");
         }
 
@@ -316,20 +316,20 @@ export const POST = withErrorHandling(
         } catch (error) {
           const err = error as Error & { stderr?: string };
           if (err.stderr?.includes("Could not resolve")) {
-            releaseDb(db);
+            await releaseDb(db);
             throw badRequest(
               "Repository not found or not accessible",
               "REPO_NOT_FOUND",
             );
           }
           if (err.stderr?.includes("gh auth login")) {
-            releaseDb(db);
+            await releaseDb(db);
             throw badRequest(
               "GitHub CLI not authenticated. Run `gh auth login` first.",
               "GH_NOT_AUTHENTICATED",
             );
           }
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "Failed to validate repository",
             "REPO_VALIDATE_FAILED",
@@ -351,7 +351,7 @@ export const POST = withErrorHandling(
 
       const descriptionTrimmed = description?.trim() || null;
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json(
         {

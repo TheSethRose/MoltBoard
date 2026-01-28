@@ -17,7 +17,7 @@ interface MetricRow {
 export const GET = withErrorHandling(
   async (): Promise<NextResponse> => {
     try {
-      const db = getDb();
+      const db = await getDb();
 
       // Get last 7 days of metrics
       const rows = db
@@ -44,7 +44,7 @@ export const GET = withErrorHandling(
         )
         .get() as { completed: number; total: number };
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({
         history: rows.reverse(), // Oldest to newest for charts
@@ -66,7 +66,7 @@ export const GET = withErrorHandling(
 export const POST = withErrorHandling(
   async (): Promise<NextResponse> => {
     try {
-      const db = getDb();
+      const db = await getDb();
       const today = new Date().toISOString().split("T")[0];
 
       // Get current task counts
@@ -93,7 +93,7 @@ export const POST = withErrorHandling(
       `,
       ).run(today, stats.completed, stats.total);
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ success: true, date: today, ...stats });
     } catch (error) {

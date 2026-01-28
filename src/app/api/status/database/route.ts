@@ -6,12 +6,12 @@ import { withErrorHandling, logError } from "@/lib/api-error-handler";
 export const GET = withErrorHandling(
   async (): Promise<NextResponse> => {
     try {
-      const db = getDb();
+      const db = await getDb();
       // Simple query to check if database is accessible
       const result = db
         .prepare("SELECT COUNT(*) as count FROM tasks")
         .get() as { count: number };
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({
         database: "connected",

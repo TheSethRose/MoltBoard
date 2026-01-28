@@ -465,7 +465,11 @@ function main() {
               db.prepare(
                 `UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
               ).run(doneStatus, pendingTask.id);
-              appendWorkNote(db, pendingTask.id, "Task ready for review (no changes)");
+              appendWorkNote(
+                db,
+                pendingTask.id,
+                "Task ready for review (no changes)",
+              );
               log(
                 "info",
                 `Completed task #${pendingTask.task_number} (no changes to commit)`,

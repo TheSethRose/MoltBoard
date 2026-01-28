@@ -65,6 +65,15 @@ function getTaskStatuses() {
 
 const TASK_STATUSES = getTaskStatuses();
 
+const REVIEW_STATUS_ENV =
+  process.env.TASK_STATUS_REVIEW ||
+  process.env.NEXT_PUBLIC_TASK_STATUS_REVIEW ||
+  "review";
+
+if (!TASK_STATUSES.includes(REVIEW_STATUS_ENV)) {
+  TASK_STATUSES.push(REVIEW_STATUS_ENV);
+}
+
 function resolveStatus(envKey, fallback) {
   const raw = process.env[envKey] || fallback;
   if (TASK_STATUSES.includes(raw)) return raw;
@@ -82,12 +91,7 @@ const TASK_STATUS = {
   review: resolveStatus("TASK_STATUS_REVIEW", "review"),
 };
 
-const REVIEW_STATUS_ENV =
-  process.env.TASK_STATUS_REVIEW ||
-  process.env.NEXT_PUBLIC_TASK_STATUS_REVIEW ||
-  "review";
-const HAS_REVIEW_STATUS = TASK_STATUSES.includes(REVIEW_STATUS_ENV);
-const REVIEW_STATUS = HAS_REVIEW_STATUS ? REVIEW_STATUS_ENV : null;
+const REVIEW_STATUS = REVIEW_STATUS_ENV;
 const COMPLETE_TARGET_STATUS = REVIEW_STATUS || TASK_STATUS.completed;
 
 function getArgValue(flag) {

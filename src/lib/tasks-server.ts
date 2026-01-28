@@ -20,7 +20,7 @@ function getDb() {
  */
 export async function getTasks(): Promise<Task[]> {
   try {
-    const db = getDb();
+    const db = await getDb();
     const rows = db
       .prepare(
         `

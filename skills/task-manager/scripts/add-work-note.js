@@ -45,7 +45,9 @@ const db = new Database(DB_PATH);
 
 let task;
 if (taskId) {
-  task = db.prepare("SELECT id, task_number FROM tasks WHERE id = ?").get(taskId);
+  task = db
+    .prepare("SELECT id, task_number FROM tasks WHERE id = ?")
+    .get(taskId);
 } else {
   task = db
     .prepare("SELECT id, task_number FROM tasks WHERE task_number = ?")

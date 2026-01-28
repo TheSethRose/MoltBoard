@@ -34,7 +34,7 @@ export const POST = withErrorHandling(
         throw badRequest("Invalid project ID", "INVALID_PROJECT_ID");
       }
 
-      const db = getDb();
+      const db = await getDb();
       const project = db
         .prepare("SELECT * FROM projects WHERE id = ?")
         .get(projectId) as
@@ -46,7 +46,7 @@ export const POST = withErrorHandling(
             github_repo_url: string | null;
           }
         | undefined;
-      releaseDb(db);
+      await releaseDb(db);
 
       if (!project) {
         throw notFound(

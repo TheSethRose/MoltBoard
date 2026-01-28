@@ -108,7 +108,9 @@ function markApproved(taskId, summary, activity) {
       "activity: review approved; awaiting human confirmation",
     );
   }
-  console.log(`\n✓ Approved task #${taskId} → ${TASK_STATUS.review} (awaiting human)`);
+  console.log(
+    `\n✓ Approved task #${taskId} → ${TASK_STATUS.review} (awaiting human)`,
+  );
 }
 
 function requestChanges(taskId, summary, activity) {
@@ -200,7 +202,9 @@ console.log("\n=== REVIEW CHECKLIST (MANDATORY) ===");
 console.log("You MUST complete each step before approving:\n");
 console.log("1. RUN: git status -sb  → List all changed/added files.");
 console.log("2. RUN: cat <filepath>  → Read each changed file.");
-console.log("3. RUN: grep -n 'TODO\\|mock\\|placeholder' <filepath>  → Search for incomplete code.");
+console.log(
+  "3. RUN: grep -n 'TODO\\|mock\\|placeholder' <filepath>  → Search for incomplete code.",
+);
 console.log("4. VERIFY: Implementation is complete - not a stub or skeleton.");
 console.log("5. TRACE: API → client → UI (all connected?).\n");
 console.log("⚠️  You MUST execute ONE of these commands before exiting:");

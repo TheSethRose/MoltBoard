@@ -1,6 +1,6 @@
 /**
  * Clawdbot Research Assistant Client
- * 
+ *
  * Provides typed client functions for calling the research assistant API.
  */
 
@@ -34,12 +34,12 @@ export interface ResearchRequest {
 
 /**
  * Call the research assistant API
- * 
+ *
  * @param request - The research request with type and input
  * @returns The structured response from Clawdbot
  */
 export async function researchAssistant(
-  request: ResearchRequest
+  request: ResearchRequest,
 ): Promise<ResearchResponse> {
   const response = await fetch("/api/clawdbot/research", {
     method: "POST",
@@ -50,7 +50,9 @@ export async function researchAssistant(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Unknown error" }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw new Error(error.message || `API error: ${response.status}`);
   }
 
@@ -62,7 +64,7 @@ export async function researchAssistant(
  * Generate task form fields from a natural language description
  */
 export async function generateTaskForm(
-  input: string
+  input: string,
 ): Promise<TaskFormResponse> {
   const response = await researchAssistant({
     type: "task-form",
@@ -81,7 +83,7 @@ export async function generateTaskForm(
  */
 export async function generateClosureSummary(
   title: string,
-  notes?: string
+  notes?: string,
 ): Promise<ClosureSummaryResponse> {
   const response = await researchAssistant({
     type: "closure-summary",

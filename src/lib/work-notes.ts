@@ -34,7 +34,8 @@ export function normalizeWorkNote(
     id: note.id || randomUUID(),
     content: note.content || "",
     author: note.author || defaultAuthor,
-    timestamp: note.timestamp || (fillTimestamp ? new Date().toISOString() : ""),
+    timestamp:
+      note.timestamp || (fillTimestamp ? new Date().toISOString() : ""),
   };
 }
 

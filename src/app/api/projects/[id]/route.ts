@@ -121,7 +121,7 @@ export const GET = withErrorHandling(
         throw badRequest("Invalid project ID", "INVALID_PROJECT_ID");
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       const project = db
         .prepare(
@@ -149,14 +149,14 @@ export const GET = withErrorHandling(
         .get(projectId) as ProjectWithTaskCount | undefined;
 
       if (!project) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(
           `Project with id ${projectId} not found`,
           "PROJECT_NOT_FOUND",
         );
       }
 
-      releaseDb(db);
+      await releaseDb(db);
 
       const githubUrl = project.github_repo_url as string | null;
       const githubToken = process.env.GITHUB_TOKEN?.trim();
@@ -226,14 +226,14 @@ export const PUT = withErrorHandling(
         link_only,
       } = body;
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check project exists
       const existing = db
         .prepare("SELECT * FROM projects WHERE id = ?")
         .get(projectId);
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(
           `Project with id ${projectId} not found`,
           "PROJECT_NOT_FOUND",
@@ -289,7 +289,7 @@ export const PUT = withErrorHandling(
             github_repo_url: string | null;
           }
         | undefined;
-      releaseDb(db);
+      await releaseDb(db);
 
       if (!project) {
         throw notFound(
@@ -402,14 +402,14 @@ export const DELETE = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check project exists
       const existing = db
         .prepare("SELECT * FROM projects WHERE id = ?")
         .get(projectId);
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(
           `Project with id ${projectId} not found`,
           "PROJECT_NOT_FOUND",
@@ -451,7 +451,7 @@ export const DELETE = withErrorHandling(
       });
 
       const result = transaction();
-      releaseDb(db);
+      await releaseDb(db);
 
       // Handle local files deletion if cascade=all
       let filesDeleted = false;

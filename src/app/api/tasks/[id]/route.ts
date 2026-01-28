@@ -33,11 +33,11 @@ export const GET = withErrorHandling(
         throw badRequest("Invalid task ID", "INVALID_TASK_ID");
       }
 
-      const db = getDb();
+      const db = await getDb();
       const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
         | DbTask
         | undefined;
-      releaseDb(db);
+      await releaseDb(db);
 
       if (!task) {
         throw notFound(`Task with id ${id} not found`, "TASK_NOT_FOUND");
@@ -86,14 +86,14 @@ export const PUT = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check task exists
       const existing = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(id) as DbTask | undefined;
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(`Task with id ${id} not found`, "TASK_NOT_FOUND");
       }
 
@@ -138,7 +138,7 @@ export const PUT = withErrorHandling(
       // WARNING: replace_work_notes=true will wipe all existing notes!
       if (append_work_note !== undefined && append_work_note) {
         if (work_notes === undefined) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "work_notes is required when append_work_note is true",
             "WORK_NOTES_REQUIRED",
@@ -178,7 +178,7 @@ export const PUT = withErrorHandling(
           append_work_note === true && work_notes !== undefined;
 
         if (!hasWorkNotes && !hasNewNoteBeingAdded) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "Cannot mark task as complete without work notes. Add a summary note first.",
             "WORK_NOTES_REQUIRED",
@@ -233,7 +233,7 @@ export const PUT = withErrorHandling(
       const updated = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(id) as DbTask;
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ task: parseDbTask(updated) });
     } catch (error) {
@@ -271,11 +271,11 @@ export const DELETE = withErrorHandling(
         throw badRequest("Invalid task ID", "INVALID_TASK_ID");
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(`Task with id ${id} not found`, "TASK_NOT_FOUND");
       }
 
@@ -313,7 +313,7 @@ export const DELETE = withErrorHandling(
       }
 
       db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ success: true });
     } catch (error) {

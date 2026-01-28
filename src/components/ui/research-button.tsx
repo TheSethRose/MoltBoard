@@ -1,6 +1,6 @@
 /**
  * Research Assistant Button Component
- * 
+ *
  * Provides AI-powered assistance for task creation and completion.
  * Supports two modes:
  * 1. Task Form Auto-fill: Generates structured task fields from natural language
@@ -14,7 +14,10 @@ import { Loader2, Sparkles, ClipboardCopy, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { TaskFormResponse, ClosureSummaryResponse } from "@/lib/clawdbot-research";
+import type {
+  TaskFormResponse,
+  ClosureSummaryResponse,
+} from "@/lib/clawdbot-research";
 
 export type ResearchMode = "task-form" | "closure-summary";
 
@@ -65,7 +68,9 @@ export function ResearchButton({
 
     setIsLoading(true);
     const toastId = toast.loading(
-      mode === "task-form" ? "Generating task fields..." : "Generating closure summary..."
+      mode === "task-form"
+        ? "Generating task fields..."
+        : "Generating closure summary...",
     );
 
     try {
@@ -82,7 +87,9 @@ export function ResearchButton({
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Unknown error" }));
+        const error = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
         throw new Error(error.message || `API error: ${response.status}`);
       }
 
@@ -106,7 +113,8 @@ export function ResearchButton({
     }
   };
 
-  const defaultText = mode === "task-form" ? "Moltbot Assist" : "Generate Summary";
+  const defaultText =
+    mode === "task-form" ? "Moltbot Assist" : "Generate Summary";
 
   return (
     <Button
@@ -163,7 +171,9 @@ export function ClosureSummaryResult({
   };
 
   return (
-    <div className={cn("space-y-4 p-4 bg-muted/30 rounded-lg border", className)}>
+    <div
+      className={cn("space-y-4 p-4 bg-muted/30 rounded-lg border", className)}
+    >
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium flex items-center gap-2">
           <Sparkles size={14} className="text-primary" />

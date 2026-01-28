@@ -200,7 +200,7 @@ export const POST = withErrorHandling(
       }
 
       // Create project in database
-      const db = getDb();
+      const db = await getDb();
 
       const result = db
         .prepare(
@@ -215,7 +215,7 @@ export const POST = withErrorHandling(
         .prepare("SELECT * FROM projects WHERE id = ?")
         .get(result.lastInsertRowid) as Record<string, unknown> | undefined;
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json(
         {

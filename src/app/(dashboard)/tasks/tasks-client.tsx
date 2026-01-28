@@ -36,7 +36,10 @@ import {
   formatStatusLabel,
 } from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
-import { ResearchButton, type TaskFormResponse } from "@/components/ui/research-button";
+import {
+  ResearchButton,
+  type TaskFormResponse,
+} from "@/components/ui/research-button";
 import useSWR, { type SWRConfiguration } from "swr";
 
 interface Task {
@@ -496,14 +499,19 @@ function TaskModal({
   const handleResearchComplete = (data: TaskFormResponse) => {
     // Set the generated fields
     setText(data.title);
-    setNotes(data.goal + (data.scope ? `\n\n## Scope\n${Array.isArray(data.scope) ? data.scope.join('\n') : data.scope}` : ""));
-    
+    setNotes(
+      data.goal +
+        (data.scope
+          ? `\n\n## Scope\n${Array.isArray(data.scope) ? data.scope.join("\n") : data.scope}`
+          : ""),
+    );
+
     // Set priority
     setPriority(data.priority);
-    
+
     // Set tags
     setTags(data.tags);
-    
+
     // Focus the title input to let user review
     setTimeout(() => inputRef.current?.focus(), 100);
   };

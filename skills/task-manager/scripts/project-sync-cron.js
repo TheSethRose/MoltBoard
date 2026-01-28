@@ -16,9 +16,7 @@ const DB_PATH =
   path.join(getWorkspacePath(), "data", "tasks.db");
 const DEFAULT_APP_URL = "http://localhost:5278";
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.APP_URL ||
-  DEFAULT_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || DEFAULT_APP_URL;
 
 function log(message) {
   const timestamp = new Date().toISOString();

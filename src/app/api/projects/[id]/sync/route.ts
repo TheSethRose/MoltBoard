@@ -105,7 +105,7 @@ export const GET = withErrorHandling(
         throw badRequest("Invalid project ID", "INVALID_PROJECT_ID");
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check project exists
       const project = db
@@ -114,7 +114,7 @@ export const GET = withErrorHandling(
         | { id: number; name: string; github_repo_url: string | null }
         | undefined;
       if (!project) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(
           `Project with id ${projectId} not found`,
           "PROJECT_NOT_FOUND",
@@ -122,7 +122,7 @@ export const GET = withErrorHandling(
       }
 
       if (!project.github_repo_url) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "Project does not have a GitHub repository configured",
           "NO_GITHUB_REPO",
@@ -133,7 +133,7 @@ export const GET = withErrorHandling(
         process.env.GITHUB_ISSUE_SYNC_ENABLED?.toLowerCase() === "true";
 
       if (!syncEnabled) {
-        releaseDb(db);
+        await releaseDb(db);
         return NextResponse.json({
           success: false,
           disabled: true,
@@ -162,7 +162,7 @@ export const GET = withErrorHandling(
       }
 
       if (!owner || !repo) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "Could not parse GitHub repository URL",
           "INVALID_GITHUB_URL",
@@ -172,7 +172,7 @@ export const GET = withErrorHandling(
       // Get GITHUB_TOKEN from environment
       const githubToken = process.env.GITHUB_TOKEN;
       if (!githubToken || githubToken.trim() === "") {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "GITHUB_TOKEN environment variable is not set. Add it to enable GitHub sync.",
           "NO_GITHUB_TOKEN",
@@ -197,21 +197,21 @@ export const GET = withErrorHandling(
 
         // Provide helpful error messages for common issues
         if (issuesResponse.status === 401) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "GitHub authentication failed. Check that GITHUB_TOKEN environment variable is set and valid.",
             "GITHUB_AUTH_ERROR",
           );
         }
         if (issuesResponse.status === 404) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             `Repository not found: ${owner}/${repo}. Check the GitHub repository URL.`,
             "GITHUB_REPO_NOT_FOUND",
           );
         }
 
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           `GitHub API error (${issuesResponse.status}): ${errorData.message || errorText}`,
           "GITHUB_API_ERROR",
@@ -221,7 +221,7 @@ export const GET = withErrorHandling(
       const githubIssues = await issuesResponse.json();
 
       if (!Array.isArray(githubIssues)) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "Invalid response from GitHub API",
           "GITHUB_API_ERROR",
@@ -301,7 +301,7 @@ export const GET = withErrorHandling(
         "UPDATE projects SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?",
       ).run(projectId);
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({
         success: true,
@@ -348,7 +348,7 @@ export const POST = withErrorHandling(
         throw badRequest("No issues selected for sync", "NO_ISSUES_SELECTED");
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check project exists
       const project = db
@@ -363,7 +363,7 @@ export const POST = withErrorHandling(
         | undefined;
 
       if (!project) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(
           `Project with id ${projectId} not found`,
           "PROJECT_NOT_FOUND",
@@ -371,7 +371,7 @@ export const POST = withErrorHandling(
       }
 
       if (!project.github_repo_url) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "Project does not have a GitHub repository configured",
           "NO_GITHUB_REPO",
@@ -392,7 +392,7 @@ export const POST = withErrorHandling(
       }
 
       if (!owner || !repo) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "Could not parse GitHub repository URL",
           "INVALID_GITHUB_URL",
@@ -402,7 +402,7 @@ export const POST = withErrorHandling(
       // Get GITHUB_TOKEN from environment
       const githubToken = process.env.GITHUB_TOKEN;
       if (!githubToken || githubToken.trim() === "") {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "GITHUB_TOKEN environment variable is not set.",
           "NO_GITHUB_TOKEN",
@@ -423,7 +423,7 @@ export const POST = withErrorHandling(
       });
 
       if (selectedIssues.length === 0) {
-        releaseDb(db);
+        await releaseDb(db);
         throw badRequest(
           "No valid issues selected for sync",
           "NO_ISSUES_SELECTED",
@@ -499,7 +499,7 @@ export const POST = withErrorHandling(
         "UPDATE projects SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?",
       ).run(projectId);
 
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({
         success: true,

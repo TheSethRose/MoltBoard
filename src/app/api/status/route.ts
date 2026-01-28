@@ -147,7 +147,7 @@ function parseUptime(output: string): UptimeData {
 
 function getTasksFromDb(): TaskSummary[] {
   try {
-    const db = getDb();
+    const db = await getDb();
     const rows = db
       .prepare(
         `
@@ -157,7 +157,7 @@ function getTasksFromDb(): TaskSummary[] {
     `,
       )
       .all() as DbTask[];
-    releaseDb(db);
+    await releaseDb(db);
 
     return rows.map((row) => ({
       id: row.id,
@@ -333,20 +333,25 @@ export const GET = withErrorHandling(
           try {
             return getTasksFromDb();
           } catch (error) {
-            logError(error as Error, { route: "/api/status", method: "GET/tasks" });
+            logError(error as Error, {
+              route: "/api/status",
+              method: "GET/tasks",
+            });
             return null;
           }
         })(),
         getSystemHealth().catch((error) => {
-          logError(error as Error, { route: "/api/status", method: "GET/health" });
+          logError(error as Error, {
+            route: "/api/status",
+            method: "GET/health",
+          });
           return null;
         }),
         getMoltbotSessionInfo(),
         getTokenUsage(),
       ]);
 
-    const tasks =
-      tasksResult.status === "fulfilled" ? tasksResult.value : null;
+    const tasks = tasksResult.status === "fulfilled" ? tasksResult.value : null;
     const health =
       healthResult.status === "fulfilled" ? healthResult.value : null;
     const sessionInfo =

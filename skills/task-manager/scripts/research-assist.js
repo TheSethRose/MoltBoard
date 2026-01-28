@@ -85,7 +85,9 @@ function updateTask(taskId, updates) {
 
   values.push(taskId);
   try {
-    db.prepare(`UPDATE tasks SET ${setClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(...values);
+    db.prepare(
+      `UPDATE tasks SET ${setClauses.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(...values);
     return true;
   } catch {
     return false;
@@ -169,7 +171,12 @@ async function autoFillTask(taskId) {
   }
 
   success(`Researching task #${task.task_number}: ${task.text}`);
-  appendWorkNote(db, taskId, "research:started: Beginning research for auto-fill", "system");
+  appendWorkNote(
+    db,
+    taskId,
+    "research:started: Beginning research for auto-fill",
+    "system",
+  );
 
   // Generate research prompt
   const researchPrompt = generateAutoFillPrompt(task);
@@ -220,14 +227,34 @@ proc.on('close', () => console.log(output));
     };
 
     if (updateTask(taskId, updates)) {
-      appendWorkNote(db, taskId, `research:completed: Auto-filled task details from research`, "system");
-      appendWorkNote(db, taskId, `description: ${autoFillResult.description.substring(0, 200)}...`, "system");
+      appendWorkNote(
+        db,
+        taskId,
+        `research:completed: Auto-filled task details from research`,
+        "system",
+      );
+      appendWorkNote(
+        db,
+        taskId,
+        `description: ${autoFillResult.description.substring(0, 200)}...`,
+        "system",
+      );
       autoFillResult.acceptance_criteria.forEach((criteria, i) => {
-        appendWorkNote(db, taskId, `acceptance_criteria[${i}]: ${criteria}`, "system");
+        appendWorkNote(
+          db,
+          taskId,
+          `acceptance_criteria[${i}]: ${criteria}`,
+          "system",
+        );
       });
       success(`Task #${task.task_number} auto-filled with research findings`);
     } else {
-      appendWorkNote(db, taskId, "research:failed: Could not update task with research findings", "system");
+      appendWorkNote(
+        db,
+        taskId,
+        "research:failed: Could not update task with research findings",
+        "system",
+      );
       error("Failed to update task with research findings");
     }
   } catch (e) {
@@ -256,7 +283,9 @@ async function generateClosureSummary(taskId) {
   const repoState = { hasChanges: false, behind: 0 };
   if (task.project_id) {
     try {
-      const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(task.project_id);
+      const project = db
+        .prepare("SELECT * FROM projects WHERE id = ?")
+        .get(task.project_id);
       if (project) {
         const localPath = project.workspace_path || project.local_path;
         if (localPath && fs.existsSync(localPath)) {
@@ -278,7 +307,9 @@ async function generateClosureSummary(taskId) {
     (note) => note.author === "agent" || note.content.includes("Progress:"),
   );
 
-  const decisions = workNotes.filter((note) => note.content.includes("Decision:"));
+  const decisions = workNotes.filter((note) =>
+    note.content.includes("Decision:"),
+  );
 
   const closureSummary = {
     executive_summary: `Completed task #${task.task_number}: ${task.text}. ${progressNotes.length} progress updates logged during implementation.`,
@@ -296,7 +327,12 @@ async function generateClosureSummary(taskId) {
   };
 
   // Add closure summary to work notes
-  appendWorkNote(db, taskId, `closure:summary: ${closureSummary.executive_summary}`, "system");
+  appendWorkNote(
+    db,
+    taskId,
+    `closure:summary: ${closureSummary.executive_summary}`,
+    "system",
+  );
   closureSummary.key_changes.forEach((change) => {
     appendWorkNote(db, taskId, `closure:changes: ${change}`, "system");
   });
@@ -323,7 +359,9 @@ async function researchQuery(query) {
 
   console.log("\n=== Research Query Results ===");
   console.log("Query: " + query);
-  console.log("\nNote: Research capability requires notebooklm-skill integration.");
+  console.log(
+    "\nNote: Research capability requires notebooklm-skill integration.",
+  );
   console.log("The query has been logged for future research.\n");
 }
 
@@ -347,7 +385,7 @@ function showStatus() {
   console.log("\nUsage:");
   console.log("  node research-assist.js --auto-fill <task-id>");
   console.log("  node research-assist.js --closure-summary <task-id>");
-  console.log("  node research-assist.js --research \"<query>\"");
+  console.log('  node research-assist.js --research "<query>"');
   console.log("  node research-assist.js --status");
 }
 

@@ -35,7 +35,7 @@ export const GET = withErrorHandling(
       const { searchParams } = new URL(req.url);
       const projectId = searchParams.get("project_id");
 
-      const db = getDb();
+      const db = await getDb();
 
       let query = `SELECT * FROM tasks`;
       const params: (number | string)[] = [];
@@ -57,7 +57,7 @@ export const GET = withErrorHandling(
           id ASC`;
 
       const rows = db.prepare(query).all(...params) as DbTask[];
-      releaseDb(db);
+      await releaseDb(db);
 
       const tasks = rows.map(parseDbTask);
       return NextResponse.json({ tasks, tagColors: TAG_COLORS });
@@ -98,7 +98,7 @@ export const POST = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Get max sort_order and max task_number in a transaction
       const maxResult = db
@@ -131,7 +131,7 @@ export const POST = withErrorHandling(
       const newTask = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(result.lastInsertRowid) as DbTask;
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ task: parseDbTask(newTask) }, { status: 201 });
     } catch (error) {
@@ -194,14 +194,14 @@ export const PUT = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       // Check task exists
       const existing = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(id) as DbTask | undefined;
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(`Task with id ${id} not found`);
       }
 
@@ -245,7 +245,7 @@ export const PUT = withErrorHandling(
       // Handle work_notes - either append, merge, or replace
       if (append_work_note !== undefined && append_work_note) {
         if (work_notes === undefined) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "work_notes is required when append_work_note is true",
             "WORK_NOTES_REQUIRED",
@@ -285,7 +285,7 @@ export const PUT = withErrorHandling(
           append_work_note === true && work_notes !== undefined;
 
         if (!hasWorkNotes && !hasNewNoteBeingAdded) {
-          releaseDb(db);
+          await releaseDb(db);
           throw badRequest(
             "Cannot mark task as complete without work notes. Add a summary note first.",
             "WORK_NOTES_REQUIRED",
@@ -340,7 +340,7 @@ export const PUT = withErrorHandling(
       const updated = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(id) as DbTask;
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ task: parseDbTask(updated) });
     } catch (error) {
@@ -375,7 +375,7 @@ export const PATCH = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       const updateStmt = db.prepare(
         "UPDATE tasks SET sort_order = ? WHERE id = ? AND status = ?",
@@ -388,7 +388,7 @@ export const PATCH = withErrorHandling(
       });
 
       transaction();
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ success: true });
     } catch (error) {
@@ -416,13 +416,13 @@ export const DELETE = withErrorHandling(
         );
       }
 
-      const db = getDb();
+      const db = await getDb();
 
       const existing = db
         .prepare("SELECT * FROM tasks WHERE id = ?")
         .get(id) as DbTask | undefined;
       if (!existing) {
-        releaseDb(db);
+        await releaseDb(db);
         throw notFound(`Task with id ${id} not found`);
       }
 
@@ -460,7 +460,7 @@ export const DELETE = withErrorHandling(
       }
 
       db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
-      releaseDb(db);
+      await releaseDb(db);
 
       return NextResponse.json({ success: true });
     } catch (error) {
