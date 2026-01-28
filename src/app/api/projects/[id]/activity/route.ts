@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
-import { withErrorHandling, badRequest, notFound } from "@/lib/api-error-handler";
+import {
+  withErrorHandling,
+  badRequest,
+  notFound,
+} from "@/lib/api-error-handler";
 
 type ActivityEntry = {
   id: string;
@@ -48,7 +52,10 @@ export const GET = withErrorHandling(
 
     // Get URL params for pagination and filtering
     const url = _req.nextUrl;
-    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+    const limit = Math.min(
+      parseInt(url.searchParams.get("limit") || "50", 10),
+      100,
+    );
     const offset = parseInt(url.searchParams.get("offset") || "0", 10);
     const typeFilter = url.searchParams.get("type"); // task_note, status_change, system
 
@@ -110,7 +117,9 @@ export const GET = withErrorHandling(
 
       for (const note of workNotes) {
         const noteId = `task-note-${task.id}-${note.id || Date.now()}`;
-        const timestamp = note.timestamp ? new Date(note.timestamp) : new Date(task.updated_at);
+        const timestamp = note.timestamp
+          ? new Date(note.timestamp)
+          : new Date(task.updated_at);
 
         // Skip if timestamp is in the future (data issue)
         if (timestamp > now) continue;
@@ -183,7 +192,10 @@ export const GET = withErrorHandling(
 
     // Sort by timestamp descending (newest first) and limit
     const activities = Array.from(activityMap.values())
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )
       .slice(0, limit);
 
     // Get total count for pagination

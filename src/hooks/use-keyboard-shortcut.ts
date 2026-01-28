@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface UseKeyboardShortcutOptions {
   onTrigger: () => void;
@@ -23,7 +23,8 @@ export function useKeyboardShortcut({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
-      const isMac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+      const isMac =
+        typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
       const modifierKey = isMac ? e.metaKey : e.ctrlKey;
 
       if (modifierKey && (e.key === "k" || e.key === "K")) {

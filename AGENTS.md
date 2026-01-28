@@ -60,9 +60,14 @@ Uses a custom connection pool (5 connections) with mutex protection. Always use 
 All API routes use the `withErrorHandling` wrapper from `@/lib/api-error-handler` which provides consistent error handling. Routes are located in `src/app/api/`.
 
 Example structure:
+
 ```typescript
 import { getDb, releaseDb } from "@/lib/db";
-import { withErrorHandling, badRequest, notFound } from "@/lib/api-error-handler";
+import {
+  withErrorHandling,
+  badRequest,
+  notFound,
+} from "@/lib/api-error-handler";
 
 export const GET = withErrorHandling(
   async (req: NextRequest): Promise<NextResponse> => {
@@ -71,7 +76,7 @@ export const GET = withErrorHandling(
     await releaseDb(db);
     return NextResponse.json({ data });
   },
-  { context: { route: "/api/...", method: "GET" } }
+  { context: { route: "/api/...", method: "GET" } },
 );
 ```
 
@@ -99,6 +104,7 @@ Statuses are defined in `src/lib/task-statuses.ts`: `backlog`, `ready`, `in_prog
 ## Background Workers & Automation
 
 Cron scripts in `skills/task-manager/scripts` drive task lifecycle and GitHub sync:
+
 - `skills/task-manager/scripts/recurring-work.js` - Main task lifecycle worker
 - `project-sync-cron.js` - Calls the sync API
 

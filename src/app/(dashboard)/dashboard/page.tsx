@@ -28,15 +28,15 @@ async function getDashboardData() {
     `,
     )
     .all() as {
-      id: number;
-      name: string;
-      description: string | null;
-      github_repo_url: string | null;
-      local_only: number;
-      last_sync_at: string | null;
-      created_at: string;
-      task_count: number;
-    }[];
+    id: number;
+    name: string;
+    description: string | null;
+    github_repo_url: string | null;
+    local_only: number;
+    last_sync_at: string | null;
+    created_at: string;
+    task_count: number;
+  }[];
 
   // Get task stats per project
   const taskStats = db
@@ -52,12 +52,23 @@ async function getDashboardData() {
       GROUP BY project_id, status
     `,
     )
-    .all() as { project_id: number; status: string; priority: string; count: number }[];
+    .all() as {
+    project_id: number;
+    status: string;
+    priority: string;
+    count: number;
+  }[];
+
+  const taskColumns = db.prepare("PRAGMA table_info(tasks)").all() as {
+    name: string;
+  }[];
+  const hasDueAt = taskColumns.some((column) => column.name === "due_at");
 
   // Get overdue tasks (not completed, past due)
-  const overdueTasks = db
-    .prepare(
-      `
+  const overdueTasks = hasDueAt
+    ? (db
+        .prepare(
+          `
       SELECT COUNT(*) as count
       FROM tasks
       WHERE project_id IS NOT NULL
@@ -65,20 +76,9 @@ async function getDashboardData() {
         AND due_at IS NOT NULL
         AND due_at < datetime('now')
     `,
-    )
-    .get() as { count: number };
-
-  // Get blocked tasks
-  const blockedTasks = db
-    .prepare(
-      `
-      SELECT COUNT(*) as count
-      FROM tasks
-      WHERE project_id IS NOT NULL
-        AND status = 'blocked'
-    `,
-    )
-    .get() as { count: number };
+        )
+        .get() as { count: number })
+    : { count: 0 };
 
   await releaseDb(db);
 
@@ -120,7 +120,6 @@ async function getDashboardData() {
     };
     const total = stats.open + stats.completed;
     const completionRate = total > 0 ? (stats.completed / total) * 100 : 0;
-    const hasUrgentTasks = false; // Would need separate query for this
 
     // Health score: 0-100
     // Penalize for blocked, overdue, and lack of progress
@@ -144,8 +143,14 @@ async function getDashboardData() {
 
   // Overall stats
   const totalProjects = projects.length;
-  const totalTasks = projectsWithHealth.reduce((sum, p) => sum + p.task_count, 0);
-  const totalOpen = projectsWithHealth.reduce((sum, p) => sum + p.open_count, 0);
+  const totalTasks = projectsWithHealth.reduce(
+    (sum, p) => sum + p.task_count,
+    0,
+  );
+  const totalOpen = projectsWithHealth.reduce(
+    (sum, p) => sum + p.open_count,
+    0,
+  );
   const totalCompleted = projectsWithHealth.reduce(
     (sum, p) => sum + p.completed_count,
     0,

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
-import { withErrorHandling, badRequest, logError } from "@/lib/api-error-handler";
+import {
+  withErrorHandling,
+  badRequest,
+  logError,
+} from "@/lib/api-error-handler";
 
 // POST /api/tasks/archive - Archive old completed tasks
 export const POST = withErrorHandling(
@@ -13,7 +17,10 @@ export const POST = withErrorHandling(
       } = body;
 
       if (typeof daysOld !== "number" || daysOld < 0) {
-        throw badRequest("daysOld must be a non-negative number", "INVALID_DAYS_OLD");
+        throw badRequest(
+          "daysOld must be a non-negative number",
+          "INVALID_DAYS_OLD",
+        );
       }
 
       const db = await getDb();
@@ -36,12 +43,12 @@ export const POST = withErrorHandling(
         `,
         )
         .all(cutoffISO) as {
-          id: number;
-          task_number: number;
-          text: string;
-          status: string;
-          completed_at: string;
-        }[];
+        id: number;
+        task_number: number;
+        text: string;
+        status: string;
+        completed_at: string;
+      }[];
 
       if (tasksToArchive.length === 0) {
         await releaseDb(db);
@@ -58,15 +65,13 @@ export const POST = withErrorHandling(
         const placeholders = tasksToArchive.map(() => "?").join(",");
         const ids = tasksToArchive.map((t) => t.id);
 
-        db
-          .prepare(
-            `
+        db.prepare(
+          `
             UPDATE tasks
             SET archived_at = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id IN (${placeholders})
           `,
-          )
-          .run(now, ...ids);
+        ).run(now, ...ids);
 
         await releaseDb(db);
 
@@ -87,7 +92,9 @@ export const POST = withErrorHandling(
         const ids = tasksToArchive.map((t) => t.id);
 
         // Delete associated data first
-        db.prepare(`DELETE FROM tasks WHERE id IN (${placeholders})`).run(...ids);
+        db.prepare(`DELETE FROM tasks WHERE id IN (${placeholders})`).run(
+          ...ids,
+        );
 
         await releaseDb(db);
 
@@ -151,7 +158,14 @@ export const GET = withErrorHandling(
           LIMIT 1
         `,
         )
-        .get() as { id: number; task_number: number; text: string; completed_at: string } | undefined;
+        .get() as
+        | {
+            id: number;
+            task_number: number;
+            text: string;
+            completed_at: string;
+          }
+        | undefined;
 
       await releaseDb(db);
 

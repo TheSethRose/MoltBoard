@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import useSWR, { type SWRConfiguration } from "swr";
 import { KanbanBoard } from "@/components/ui/kanban-board";
 import { TaskListView } from "@/components/ui/task-list-view";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Button } from "@/components/ui/button";
+import { LayoutList, Kanban } from "lucide-react";
+import { TaskModal } from "./TaskModal";
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
+import { useTaskMutations, useKeyboardNav } from "./hooks";
+import type { Task, Project } from "./types";
 import {
   getTaskStatuses,
   getDefaultTaskStatus,
   formatStatusLabel,
 } from "@/lib/task-statuses";
-import { TaskModal } from "./TaskModal";
-import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
-import { useTaskMutations, useKeyboardNav } from "./hooks";
-import type { Task, Project } from "./types";
-import { Button } from "@/components/ui/button";
-import { LayoutList, Kanban } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const TASK_STATUSES = getTaskStatuses();
 const DEFAULT_TASK_STATUS = getDefaultTaskStatus(TASK_STATUSES);
@@ -112,9 +111,14 @@ export function TasksClient({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [mutate]);
 
+  // Track if we've done initial sync from SWR data
+  const swrSynced = useRef(false);
+
   // Sync SWR data into local state when it changes (after initial load)
   useEffect(() => {
-    if (data?.tasks) {
+    if (data?.tasks && !swrSynced.current) {
+      swrSynced.current = true;
+      /* eslint-disable react-hooks/set-state-in-effect */
       setTasks((prevTasks) => {
         // Merge server tasks with local state, preserving local modifications
         const mergedTasks = data.tasks.map((serverTask: Task) => {
@@ -133,6 +137,7 @@ export function TasksClient({
 
         return [...mergedTasks, ...newLocalTasks];
       });
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [data?.tasks, locallyModifiedTasks]);
 
@@ -231,11 +236,17 @@ export function TasksClient({
     setShortcutsDialogOpen(true);
   }, []);
 
+  // Update editingTask when tasks change (to keep it in sync)
+  const prevEditingTaskId = useRef(editingTask?.id);
+
   useEffect(() => {
-    if (!editingTask) return;
+    if (!editingTask || editingTask.id === prevEditingTaskId.current) return;
+    prevEditingTaskId.current = editingTask.id;
     const updatedTask = tasks.find((t) => t.id === editingTask.id);
     if (updatedTask && updatedTask !== editingTask) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setEditingTask(updatedTask);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [tasks, editingTask]);
 
@@ -312,7 +323,9 @@ export function TasksClient({
           onDeleteDirect={(id) => deleteTask(id)}
           onTaskEdit={openEditModal}
           onAddClick={openAddModal}
-          onQuickAdd={(text) => quickAdd(text, DEFAULT_TASK_STATUS as Task["status"])}
+          onQuickAdd={(text) =>
+            quickAdd(text, DEFAULT_TASK_STATUS as Task["status"])
+          }
           selectedTaskId={
             selectedTaskIndex
               ? columns[selectedTaskIndex.column].tasks[selectedTaskIndex.index]
@@ -363,7 +376,9 @@ export function TasksClient({
           selectedTaskIds={selectedTaskIds}
           onTaskToggleSelect={toggleSelectTask}
           onSelectAll={() => {
-            filteredTasks.forEach((t) => setSelectedTaskIds((prev) => new Set([...prev, t.id])));
+            filteredTasks.forEach((t) =>
+              setSelectedTaskIds((prev) => new Set([...prev, t.id])),
+            );
           }}
           onDeselectAll={() => {
             setSelectedTaskIds(new Set());

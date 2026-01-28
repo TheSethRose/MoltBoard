@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type {
-  KanbanTask,
-  KanbanColumn as KanbanColumnType,
-} from "./types";
+import type { KanbanTask, KanbanColumn as KanbanColumnType } from "./types";
 import { TaskCard } from "./task-card";
 import { CheckSquare, Square, Plus, ClipboardList } from "lucide-react";
 
@@ -93,18 +90,18 @@ export function KanbanColumn({
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
             <button
-              onClick={onDeselectColumn}
+              onClick={onSelectColumn}
               className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
               aria-label={`Select all in ${column.title}`}
             >
-              <Square size={14} />
+              <CheckSquare size={14} />
             </button>
             <button
-              onClick={onSelectColumn}
+              onClick={onDeselectColumn}
               className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
               aria-label={`Deselect all in ${column.title}`}
             >
-              <CheckSquare size={14} />
+              <Square size={14} />
             </button>
           </div>
           <div

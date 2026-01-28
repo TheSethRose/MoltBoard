@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Clock, Loader2, RefreshCw, FileText, CloudSync, Info } from "lucide-react";
+import {
+  Clock,
+  Loader2,
+  RefreshCw,
+  FileText,
+  CloudSync,
+  Info,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ActivityEntry {
@@ -21,12 +28,6 @@ interface ActivityFeedProps {
   className?: string;
 }
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch activity");
-  return res.json();
-};
-
 export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,14 +35,22 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(offset);
+  const projectIdRef = useRef(projectId);
+
   const LIMIT = 30;
+
+  // Keep refs in sync
+  offsetRef.current = offset;
+  projectIdRef.current = projectId;
 
   const loadActivity = async (reset = false) => {
     try {
       setLoading(true);
-      const newOffset = reset ? 0 : offset;
+      const newOffset = reset ? 0 : offsetRef.current;
+      const currentProjectId = projectIdRef.current;
       const res = await fetch(
-        `/api/projects/${projectId}/activity?limit=${LIMIT}&offset=${newOffset}`,
+        `/api/projects/${currentProjectId}/activity?limit=${LIMIT}&offset=${newOffset}`,
       );
       if (!res.ok) throw new Error("Failed to fetch activity");
       const data = await res.json();
@@ -63,7 +72,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
 
   useEffect(() => {
     loadActivity(true);
-  }, [projectId]);
+  }, []);
 
   const loadMore = () => {
     if (!loading && hasMore) {

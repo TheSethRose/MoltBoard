@@ -664,7 +664,9 @@ export default function ProjectDetailClient({
   return (
     <div className="h-full flex flex-col">
       {/* Track this project as recently viewed */}
-      {project && <RecentItemTracker id={project.id} name={project.name} type="project" />}
+      {project && (
+        <RecentItemTracker id={project.id} name={project.name} type="project" />
+      )}
 
       {/* Header */}
       <header className="mb-6">
@@ -809,7 +811,13 @@ export default function ProjectDetailClient({
               Pull Latest
             </Button>
           )}
-        {project && <PinButton projectId={project.id} projectName={project.name} showLabel />}
+        {project && (
+          <PinButton
+            projectId={project.id}
+            projectName={project.name}
+            showLabel
+          />
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -837,7 +845,7 @@ export default function ProjectDetailClient({
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
             activeTab === "tasks"
               ? "text-foreground border-primary"
-              : "text-muted-foreground border-transparent hover:text-foreground"
+              : "text-muted-foreground border-transparent hover:text-foreground",
           )}
         >
           Tasks
@@ -852,7 +860,7 @@ export default function ProjectDetailClient({
             "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
             activeTab === "activity"
               ? "text-foreground border-primary"
-              : "text-muted-foreground border-transparent hover:text-foreground"
+              : "text-muted-foreground border-transparent hover:text-foreground",
           )}
         >
           Activity

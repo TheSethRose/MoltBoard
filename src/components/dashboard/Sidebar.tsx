@@ -9,9 +9,9 @@ import {
   LayoutDashboard,
   LayoutList,
   Folder,
-  Settings2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sun,
   Moon,
   Search,
@@ -32,7 +32,6 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: LayoutList },
   { href: "/projects", label: "Projects", icon: Folder },
-  { href: "/status", label: "Status", icon: Settings2 },
 ];
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -83,6 +82,8 @@ export function Sidebar({ children }: SidebarProps) {
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [listMode, setListMode] = useState<"pinned" | "recent">("pinned");
+  const [listCollapsed, setListCollapsed] = useState(false);
   const { pinnedIds } = usePinnedProjects();
 
   // Fetch projects to get names for pinned projects
@@ -124,7 +125,11 @@ export function Sidebar({ children }: SidebarProps) {
           )}
           {collapsed && pinnedProjects.length > 0 && (
             <div className="flex items-center justify-center w-full">
-              <Pin size={14} className="text-primary" aria-label={`${pinnedProjects.length} pinned projects`} />
+              <Pin
+                size={14}
+                className="text-primary"
+                aria-label={`${pinnedProjects.length} pinned projects`}
+              />
             </div>
           )}
           <button
@@ -137,13 +142,57 @@ export function Sidebar({ children }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto" aria-label="Main navigation">
+        <nav
+          className="flex-1 p-2 space-y-1 overflow-y-auto"
+          aria-label="Main navigation"
+        >
+          {!collapsed && (
+            <div className="px-2 pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="relative grid grid-cols-2 flex-1 rounded-lg bg-muted/60 p-1 text-sm font-semibold uppercase tracking-wider">
+                  <span
+                    className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-background shadow transition-transform ${listMode === "recent" ? "translate-x-full" : "translate-x-0"}`}
+                    aria-hidden="true"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setListMode("pinned")}
+                    aria-pressed={listMode === "pinned"}
+                    className="relative z-10 px-2 py-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Pinned
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setListMode("recent")}
+                    aria-pressed={listMode === "recent"}
+                    className="relative z-10 px-2 py-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Recent
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setListCollapsed((prev) => !prev)}
+                  aria-expanded={!listCollapsed}
+                  aria-label={listCollapsed ? "Expand pinned & recent" : "Collapse pinned & recent"}
+                  className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${listCollapsed ? "-rotate-90" : "rotate-0"}`}
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            </div>
+          )}
           {/* Pinned Projects */}
-          {pinnedProjects.length > 0 && !collapsed && (
+          {!listCollapsed &&
+            listMode === "pinned" &&
+            pinnedProjects.length > 0 &&
+            !collapsed && (
             <div className="mb-4">
-              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Pinned
-              </p>
               <div className="space-y-1">
                 {pinnedProjects.map((project) => {
                   const isActive = pathname === `/projects/${project.id}`;
@@ -158,7 +207,11 @@ export function Sidebar({ children }: SidebarProps) {
                       }`}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      <Pin size={16} className="text-primary" aria-hidden="true" />
+                      <Pin
+                        size={16}
+                        className="text-primary"
+                        aria-hidden="true"
+                      />
                       <span className="truncate">{project.name}</span>
                     </Link>
                   );
@@ -168,8 +221,15 @@ export function Sidebar({ children }: SidebarProps) {
           )}
 
           {/* Recent Items */}
+          {!collapsed && !listCollapsed && listMode === "recent" && (
+            <RecentItems maxItems={5} className="pb-2" />
+          )}
+
           {!collapsed && (
-            <RecentItems maxItems={5} />
+            <div
+              className="mx-3 my-2 h-px bg-border/70"
+              aria-hidden="true"
+            />
           )}
 
           {/* Main Navigation Items */}
@@ -262,8 +322,7 @@ export function Sidebar({ children }: SidebarProps) {
         <Search size={16} />
         <span className="hidden sm:inline">Search</span>
         <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-          <Command size={10} />
-          K
+          <Command size={10} />K
         </kbd>
       </button>
     </div>

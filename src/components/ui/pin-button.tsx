@@ -7,7 +7,13 @@ import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 interface PinButtonProps {
   projectId: number;
   projectName: string;
-  variant?: "ghost" | "outline" | "default" | "secondary" | "destructive" | "link";
+  variant?:
+    | "ghost"
+    | "outline"
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   showLabel?: boolean;

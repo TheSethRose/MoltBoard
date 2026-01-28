@@ -865,12 +865,18 @@ export default function ProjectsClient() {
               </CardContent>
               <CardFooter className="flex justify-between">
                 <div className="flex gap-2">
-                  <Link href={`/projects/${project.id}`} className="min-h-[24px]">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="min-h-[24px]"
+                  >
                     <Button variant="outline" size="sm">
                       View Details
                     </Button>
                   </Link>
-                  <PinButton projectId={project.id} projectName={project.name} />
+                  <PinButton
+                    projectId={project.id}
+                    projectName={project.name}
+                  />
                 </div>
                 <div className="flex gap-1">
                   <Button

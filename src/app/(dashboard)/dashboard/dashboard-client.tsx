@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Folder,
   CheckCircle2,
@@ -17,6 +16,7 @@ import {
   BarChart3,
   Zap,
 } from "lucide-react";
+import { StatusPanel } from "./status-panel";
 
 interface DashboardData {
   projects: {
@@ -74,7 +74,9 @@ function getHealthColor(score: number): string {
   return "text-red-500";
 }
 
-function getHealthBadgeVariant(score: number): "default" | "secondary" | "outline" | "destructive" {
+function getHealthBadgeVariant(
+  score: number,
+): "default" | "secondary" | "outline" | "destructive" {
   if (score >= 80) return "default";
   if (score >= 60) return "secondary";
   if (score >= 40) return "outline";
@@ -121,11 +123,7 @@ function StatCard({
   );
 }
 
-function ProjectCard({
-  project,
-}: {
-  project: DashboardData["projects"][0];
-}) {
+function ProjectCard({ project }: { project: DashboardData["projects"][0] }) {
   const healthColor = getHealthColor(project.health_score);
   const healthVariant = getHealthBadgeVariant(project.health_score);
 
@@ -149,15 +147,6 @@ function ProjectCard({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Progress Bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{project.completion_rate}%</span>
-          </div>
-          <Progress value={project.completion_rate} className="h-2" />
-        </div>
-
         {/* Task Stats */}
         <div className="grid grid-cols-4 gap-2 text-center">
           <div className="p-2 rounded-md bg-muted/50">
@@ -210,7 +199,8 @@ export function DashboardClient({ data }: DashboardClientProps) {
     [sortedProjects],
   );
   const warningProjects = useMemo(
-    () => sortedProjects.filter((p) => p.health_score >= 40 && p.health_score < 80),
+    () =>
+      sortedProjects.filter((p) => p.health_score >= 40 && p.health_score < 80),
     [sortedProjects],
   );
   const criticalProjects = useMemo(
@@ -339,6 +329,8 @@ export function DashboardClient({ data }: DashboardClientProps) {
           </div>
         </div>
       )}
+
+      <StatusPanel />
     </div>
   );
 }

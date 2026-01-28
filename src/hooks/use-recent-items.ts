@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const RECENT_ITEMS_KEY = "moltboard-recent-items";
 const MAX_RECENT_ITEMS = 10;
@@ -22,15 +22,20 @@ interface UseRecentItemsReturn {
 
 export function useRecentItems(): UseRecentItemsReturn {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  const initialized = useRef(false);
 
   // Load from localStorage on mount
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
     try {
       const stored = localStorage.getItem(RECENT_ITEMS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
+          /* eslint-disable react-hooks/set-state-in-effect */
           setRecentItems(parsed as RecentItem[]);
+          /* eslint-enable react-hooks/set-state-in-effect */
         }
       }
     } catch (error) {
@@ -90,7 +95,7 @@ export function useRecentItems(): UseRecentItemsReturn {
     } catch (error) {
       console.error("Failed to clear recent items:", error);
     }
-  }, [saveToStorage]);
+  }, []);
 
   return {
     recentItems,

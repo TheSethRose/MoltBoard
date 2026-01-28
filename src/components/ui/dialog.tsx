@@ -58,7 +58,8 @@ function DialogContent({
   hideCloseButton?: boolean;
 }) {
   const shouldShowCloseButton =
-    showCloseButton ?? (hideCloseButton !== undefined ? !hideCloseButton : true);
+    showCloseButton ??
+    (hideCloseButton !== undefined ? !hideCloseButton : true);
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />

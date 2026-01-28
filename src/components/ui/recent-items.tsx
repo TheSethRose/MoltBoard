@@ -2,12 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import {
-  Clock,
-  X,
-  FileText,
-  Folder,
-} from "lucide-react";
+import { X, FileText, Folder } from "lucide-react";
 import { useRecentItems, RecentItem } from "@/hooks/use-recent-items";
 import { cn } from "@/lib/utils";
 
@@ -23,21 +18,30 @@ function RecentItemEntry({
   item: RecentItem;
   onRemove: () => void;
 }) {
-  const href = item.type === "project" ? `/projects/${item.id}` : `/tasks?id=${item.id}`;
+  const href =
+    item.type === "project" ? `/projects/${item.id}` : `/tasks?id=${item.id}`;
 
   return (
     <div className="flex items-center gap-2 group">
       <Link
         href={href}
-        className="flex-1 flex items-center gap-2 min-w-0 px-2 py-1.5 rounded hover:bg-accent transition-colors"
+        className="flex-1 flex items-center gap-3 min-w-0 px-3 py-2 min-h-[40px] rounded-md transition-colors touch-action-manipulation text-muted-foreground hover:text-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {item.type === "project" ? (
-          <Folder size={14} className="shrink-0 text-muted-foreground" />
+          <Folder
+            size={16}
+            className="shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
         ) : (
-          <FileText size={14} className="shrink-0 text-muted-foreground" />
+          <FileText
+            size={16}
+            className="shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{item.name}</p>
+          <p className="font-medium truncate">{item.name}</p>
           {item.projectName && item.type === "task" && (
             <p className="text-xs text-muted-foreground truncate">
               {item.projectName}
@@ -50,79 +54,51 @@ function RecentItemEntry({
           e.preventDefault();
           onRemove();
         }}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity"
+        className="opacity-0 group-hover:opacity-100 p-1.5 min-h-[32px] min-w-[32px] rounded hover:bg-accent transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
         aria-label="Remove from recent"
       >
-        <X size={12} className="text-muted-foreground" />
+        <X size={14} className="text-muted-foreground" aria-hidden="true" />
       </button>
     </div>
   );
 }
 
 export function RecentItems({ maxItems = 5, className }: RecentItemsProps) {
-  const { recentItems, clearRecentItems, removeRecentItem } = useRecentItems();
+  const { recentItems, removeRecentItem } = useRecentItems();
 
   const displayItems = useMemo(
     () => recentItems.slice(0, maxItems),
     [recentItems, maxItems],
   );
 
-  const formatTime = (timestamp: number) => {
-    const now = Date.now();
-    const diffMs = now - timestamp;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return new Date(timestamp).toLocaleDateString();
-  };
-
-  if (recentItems.length === 0) {
-    return (
-      <div className={cn("px-3 py-2", className)}>
-        <p className="text-xs text-muted-foreground text-center">
-          No recent items yet
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className={cn("space-y-1", className)}>
-      <div className="flex items-center justify-between px-3 py-1.5">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          <Clock size={12} />
-          <span>Recent</span>
+      {recentItems.length === 0 ? (
+        <div className="px-3 py-2 min-h-[40px] flex items-center justify-center">
+          <p className="text-xs text-muted-foreground text-center">
+            No recent items yet
+          </p>
         </div>
-        {recentItems.length > 0 && (
-          <button
-            onClick={clearRecentItems}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      <div className="space-y-0.5 px-2">
-        {displayItems.map((item) => (
-          <RecentItemEntry
-            key={`${item.type}-${item.id}`}
-            item={item}
-            onRemove={() => removeRecentItem(item.id, item.type)}
-          />
-        ))}
-      </div>
-      {recentItems.length > maxItems && (
-        <Link
-          href="/tasks"
-          className="block px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
-        >
-          View all ({recentItems.length})
-        </Link>
+      ) : (
+        <>
+          <div className="space-y-1">
+            {displayItems.map((item) => (
+              <RecentItemEntry
+                key={`${item.type}-${item.id}`}
+                item={item}
+                onRemove={() => removeRecentItem(item.id, item.type)}
+              />
+            ))}
+          </div>
+          {recentItems.length > maxItems && (
+            <Link
+              href="/tasks"
+              className="block px-3 py-2 min-h-[40px] rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              View all ({recentItems.length})
+            </Link>
+          )}
+        </>
       )}
     </div>
   );

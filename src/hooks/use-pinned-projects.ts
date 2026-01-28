@@ -40,7 +40,11 @@ export function usePinnedProjects() {
 
   const getServerSnapshot = useCallback(() => EMPTY_PINNED, []);
 
-  const pinnedIds = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const pinnedIds = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
 
   const togglePin = useCallback((projectId: number) => {
     const current = getPinnedProjects();
@@ -54,12 +58,17 @@ export function usePinnedProjects() {
     }
 
     localStorage.setItem(PINNED_PROJECTS_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new StorageEvent("storage", { key: PINNED_PROJECTS_KEY }));
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: PINNED_PROJECTS_KEY }),
+    );
   }, []);
 
-  const isPinned = useCallback((projectId: number) => {
-    return getPinnedProjects().includes(projectId);
-  }, []);
+  const isPinned = useCallback(
+    (projectId: number) => {
+      return pinnedIds.includes(projectId);
+    },
+    [pinnedIds],
+  );
 
   return {
     pinnedIds,

@@ -17,6 +17,19 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+interface TaskResult {
+  id: number;
+  task_number: number;
+  text: string;
+  status: string;
+}
+
+interface ProjectResult {
+  id: number;
+  name: string;
+  open_task_count?: number;
+}
+
 interface CommandItem {
   id: string;
   type: "task" | "project" | "action";
@@ -42,6 +55,10 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
+  const onOpenShortcutsRef = React.useRef(onOpenShortcuts);
+
+  // Keep ref in sync
+  onOpenShortcutsRef.current = onOpenShortcuts;
 
   // Mock data - in production, fetch from API based on query
   const [results, setResults] = React.useState<CommandItem[]>([]);
@@ -54,6 +71,7 @@ export function CommandPalette({
       setQuery("");
       setSelectedIndex(0);
       // Load initial results
+
       loadInitialResults();
     }
   }, [open]);
@@ -68,23 +86,25 @@ export function CommandPalette({
         fetch("/api/projects").then((r) => r.json()),
       ]);
 
-      const tasks = (tasksRes.tasks || []).slice(0, 5).map((task: any) => ({
-        id: `task-${task.id}`,
-        type: "task" as const,
-        title: `#${task.task_number}: ${task.text}`,
-        subtitle: task.status,
-        icon: <CheckSquare size={16} className="text-muted-foreground" />,
-      }));
+      const tasks = (tasksRes.tasks || [])
+        .slice(0, 5)
+        .map((task: TaskResult) => ({
+          id: `task-${task.id}`,
+          type: "task" as const,
+          title: `#${task.task_number}: ${task.text}`,
+          subtitle: task.status,
+          icon: <CheckSquare size={16} className="text-muted-foreground" />,
+        }));
 
       const projects = (projectsRes.projects || []).slice(0, 5).map(
-        (project: any) =>
+        (project: ProjectResult) =>
           ({
             id: `project-${project.id}`,
             type: "project" as const,
             title: project.name,
             subtitle: `${project.open_task_count || 0} open tasks`,
             icon: <Folder size={16} className="text-muted-foreground" />,
-          } as CommandItem),
+          }) as CommandItem,
       );
 
       const actions: CommandItem[] = [
@@ -108,7 +128,7 @@ export function CommandPalette({
           title: "Keyboard Shortcuts",
           subtitle: "View all keyboard shortcuts",
           icon: <Keyboard size={16} className="text-muted-foreground" />,
-          action: onOpenShortcuts,
+          action: onOpenShortcutsRef.current,
         },
       ];
 
@@ -139,11 +159,11 @@ export function CommandPalette({
         const queryLower = query.toLowerCase();
 
         const filteredTasks = (tasksRes.tasks || [])
-          .filter((task: any) =>
+          .filter((task: TaskResult) =>
             task.text.toLowerCase().includes(queryLower),
           )
           .slice(0, 5)
-          .map((task: any) => ({
+          .map((task: TaskResult) => ({
             id: `task-${task.id}`,
             type: "task" as const,
             title: `#${task.task_number}: ${task.text}`,
@@ -152,19 +172,19 @@ export function CommandPalette({
           }));
 
         const filteredProjects = (projectsRes.projects || [])
-          .filter((project: any) =>
+          .filter((project: ProjectResult) =>
             project.name.toLowerCase().includes(queryLower),
           )
           .slice(0, 5)
           .map(
-            (project: any) =>
+            (project: ProjectResult) =>
               ({
                 id: `project-${project.id}`,
                 type: "project" as const,
                 title: project.name,
                 subtitle: `${project.open_task_count || 0} open tasks`,
                 icon: <Folder size={16} className="text-muted-foreground" />,
-              } as CommandItem),
+              }) as CommandItem,
           );
 
         setResults([...filteredTasks, ...filteredProjects]);
@@ -226,7 +246,10 @@ export function CommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 shadow-2xl max-w-[500px]" hideCloseButton>
+      <DialogContent
+        className="overflow-hidden p-0 shadow-2xl max-w-[500px]"
+        hideCloseButton
+      >
         <DialogHeader className="px-4 pt-4 pb-2">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Search size={16} className="text-muted-foreground" />

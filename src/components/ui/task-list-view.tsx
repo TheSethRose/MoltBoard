@@ -6,7 +6,13 @@ import { Project } from "@/app/(dashboard)/tasks/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { ArrowUpDown, ArrowUp, ArrowDown, Calendar, Flag, MoreHorizontal } from "lucide-react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Flag,
+  MoreHorizontal,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SortField = "order" | "created" | "updated" | "due" | "priority";
@@ -104,7 +110,8 @@ export function TaskListView({
   };
 
   const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown size={14} className="text-muted-foreground" />;
+    if (sortField !== field)
+      return <ArrowUpDown size={14} className="text-muted-foreground" />;
     return sortDirection === "asc" ? (
       <ArrowUp size={14} />
     ) : (
@@ -119,15 +126,22 @@ export function TaskListView({
 
   const getPriorityClass = (priority: string | null | undefined) => {
     switch (priority) {
-      case "urgent": return "text-red-500 border-red-500/30 bg-red-500/10";
-      case "high": return "text-orange-500 border-orange-500/30 bg-orange-500/10";
-      case "medium": return "text-yellow-500 border-yellow-500/30 bg-yellow-500/10";
-      case "low": return "text-emerald-500 border-emerald-500/30 bg-emerald-500/10";
-      default: return "";
+      case "urgent":
+        return "text-red-500 border-red-500/30 bg-red-500/10";
+      case "high":
+        return "text-orange-500 border-orange-500/30 bg-orange-500/10";
+      case "medium":
+        return "text-yellow-500 border-yellow-500/30 bg-yellow-500/10";
+      case "low":
+        return "text-emerald-500 border-emerald-500/30 bg-emerald-500/10";
+      default:
+        return "";
     }
   };
 
-  const allSelected = sortedTasks.length > 0 && sortedTasks.every((t) => selectedTaskIds.has(t.id));
+  const allSelected =
+    sortedTasks.length > 0 &&
+    sortedTasks.every((t) => selectedTaskIds.has(t.id));
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -138,7 +152,11 @@ export function TaskListView({
           {projects && projects.length > 0 && (
             <Select
               value={String(projectFilter)}
-              onChange={(e) => onProjectFilterChange(e.target.value === "all" ? "all" : Number(e.target.value))}
+              onChange={(e) =>
+                onProjectFilterChange(
+                  e.target.value === "all" ? "all" : Number(e.target.value),
+                )
+              }
               className="w-[180px]"
             >
               <option value="all">All Projects</option>
@@ -153,10 +171,20 @@ export function TaskListView({
           {/* Selection Actions */}
           {sortedTasks.length > 0 && (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onSelectAll} className="text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSelectAll}
+                className="text-xs"
+              >
                 Select All
               </Button>
-              <Button variant="ghost" size="sm" onClick={onDeselectAll} className="text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDeselectAll}
+                className="text-xs"
+              >
                 Deselect All
               </Button>
               <span className="text-xs text-muted-foreground">
@@ -175,7 +203,10 @@ export function TaskListView({
               variant="ghost"
               size="sm"
               onClick={() => toggleSort(option.field)}
-              className={cn("text-xs gap-1", sortField === option.field && "bg-accent")}
+              className={cn(
+                "text-xs gap-1",
+                sortField === option.field && "bg-accent",
+              )}
             >
               {getSortIcon(option.field)}
               {option.label}
@@ -198,7 +229,9 @@ export function TaskListView({
                   <input
                     type="checkbox"
                     checked={allSelected}
-                    onChange={(e) => e.target.checked ? onSelectAll() : onDeselectAll()}
+                    onChange={(e) =>
+                      e.target.checked ? onSelectAll() : onDeselectAll()
+                    }
                     className="rounded border-input"
                     aria-label="Select all tasks"
                   />
@@ -217,7 +250,7 @@ export function TaskListView({
                   key={task.id}
                   className={cn(
                     "hover:bg-accent/50 transition-colors",
-                    selectedTaskIds.has(task.id) && "bg-accent/20"
+                    selectedTaskIds.has(task.id) && "bg-accent/20",
                   )}
                 >
                   <td className="p-3">
@@ -253,7 +286,10 @@ export function TaskListView({
                     {task.priority && (
                       <Badge
                         variant="outline"
-                        className={cn("text-xs gap-1", getPriorityClass(task.priority))}
+                        className={cn(
+                          "text-xs gap-1",
+                          getPriorityClass(task.priority),
+                        )}
                       >
                         <Flag size={10} />
                         {task.priority}

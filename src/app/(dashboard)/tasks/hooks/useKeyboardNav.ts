@@ -75,12 +75,7 @@ export function useKeyboardNav({
       }
 
       // Ctrl/Cmd + / for keyboard shortcuts help
-      if (
-        isCtrlOrMeta &&
-        e.key === "/" &&
-        !e.shiftKey &&
-        !e.altKey
-      ) {
+      if (isCtrlOrMeta && e.key === "/" && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         openShortcutsHelp();
         return;

@@ -68,7 +68,9 @@ export function KeyboardShortcutsDialog({
     (s) => s.category === "navigation",
   );
   const editing = KEYBOARD_SHORTCUTS.filter((s) => s.category === "editing");
-  const selection = KEYBOARD_SHORTCUTS.filter((s) => s.category === "selection");
+  const selection = KEYBOARD_SHORTCUTS.filter(
+    (s) => s.category === "selection",
+  );
   const help = KEYBOARD_SHORTCUTS.filter((s) => s.category === "help");
 
   return (
@@ -88,15 +90,15 @@ export function KeyboardShortcutsDialog({
           <ShortcutCategory title="Navigation" shortcuts={navigation} />
           <ShortcutCategory title="Editing" shortcuts={editing} />
           <ShortcutCategory title="Selection" shortcuts={selection} />
-          <ShortcutCategory
-            title="Help"
-            shortcuts={help}
-          />
+          <ShortcutCategory title="Help" shortcuts={help} />
         </div>
 
         <div className="flex items-center justify-end border-t pt-4">
           <span className="text-xs text-muted-foreground">
-            Press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd>{" "}
+            Press{" "}
+            <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+              Esc
+            </kbd>{" "}
             to close
           </span>
         </div>

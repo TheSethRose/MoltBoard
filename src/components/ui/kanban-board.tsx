@@ -3,7 +3,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { formatStatusLabel } from "@/lib/task-statuses";
-import type { TaskStatus } from "@/types/task";
 import { AlertCircle, ArrowUp, Minus, ArrowDown } from "lucide-react";
 import { FilterBar } from "./kanban-board/filter-bar";
 import { KanbanColumn } from "./kanban-board/kanban-column";
@@ -13,7 +12,11 @@ import type {
   KanbanProject,
 } from "./kanban-board/types";
 
-export type { KanbanTask, KanbanColumn, KanbanProject } from "./kanban-board/types";
+export type {
+  KanbanTask,
+  KanbanColumn,
+  KanbanProject,
+} from "./kanban-board/types";
 
 export interface KanbanBoardProps {
   columns: KanbanColumnType[];
@@ -147,7 +150,8 @@ export function KanbanBoard({
   onBulkDelete = async () => {},
   className,
 }: KanbanBoardProps) {
-  const [columns, setColumns] = React.useState<KanbanColumnType[]>(initialColumns);
+  const [columns, setColumns] =
+    React.useState<KanbanColumnType[]>(initialColumns);
   const [tagFilter, setTagFilter] = React.useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
