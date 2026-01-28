@@ -157,7 +157,9 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
         setOffset(newOffset + LIMIT);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load activity");
+        setError(
+          err instanceof Error ? err.message : "Failed to load activity",
+        );
       } finally {
         setLoading(false);
       }
@@ -407,23 +409,23 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
                   Type
                 </label>
                 <div className="flex flex-wrap gap-1">
-                  {(["task_note", "status_change", "system"] as ActivityType[]).map(
-                    (type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => toggleType(type)}
-                        className={cn(
-                          "px-2 py-1 text-xs rounded-md border transition-colors",
-                          filters.type.has(type)
-                            ? "bg-primary/20 border-primary/40 text-primary"
-                            : "bg-transparent border-border hover:bg-accent",
-                        )}
-                      >
-                        {getTypeLabel(type)}
-                      </button>
-                    ),
-                  )}
+                  {(
+                    ["task_note", "status_change", "system"] as ActivityType[]
+                  ).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => toggleType(type)}
+                      className={cn(
+                        "px-2 py-1 text-xs rounded-md border transition-colors",
+                        filters.type.has(type)
+                          ? "bg-primary/20 border-primary/40 text-primary"
+                          : "bg-transparent border-border hover:bg-accent",
+                      )}
+                    >
+                      {getTypeLabel(type)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -518,10 +520,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
             className="p-1.5 rounded hover:bg-accent transition-colors disabled:opacity-50"
             aria-label="Refresh activity"
           >
-            <RefreshCw
-              size={14}
-              className={cn(loading && "animate-spin")}
-            />
+            <RefreshCw size={14} className={cn(loading && "animate-spin")} />
           </button>
         </div>
       </div>
@@ -584,7 +583,12 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
                     >
                       {getAuthorLabel(entry.author)}
                     </span>
-                    <span className={cn("text-xs px-1.5 py-0.5 rounded", getTypeColor(entry.type))}>
+                    <span
+                      className={cn(
+                        "text-xs px-1.5 py-0.5 rounded",
+                        getTypeColor(entry.type),
+                      )}
+                    >
                       {getTypeLabel(entry.type)}
                     </span>
                     {entry.task_title && entry.task_number && entry.task_id && (
