@@ -35,15 +35,26 @@ export const GET = withErrorHandling(
     try {
       const { searchParams } = new URL(req.url);
       const projectId = searchParams.get("project_id");
+      const includeArchived = searchParams.get("include_archived") === "true";
 
       const db = await getDb();
 
       let query = `SELECT * FROM tasks`;
       const params: (number | string)[] = [];
+      const conditions: string[] = [];
 
       if (projectId) {
-        query += ` WHERE project_id = ?`;
+        conditions.push("project_id = ?");
         params.push(parseInt(projectId, 10));
+      }
+
+      // Exclude archived tasks by default
+      if (!includeArchived) {
+        conditions.push("(archived_at IS NULL OR archived_at = '')");
+      }
+
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(" AND ")}`;
       }
 
       query += ` ORDER BY 
@@ -290,6 +301,18 @@ export const PUT = withErrorHandling(
           project_id,
         );
         if (note) fieldChanges.push(note);
+      }
+
+      // Track completed_at: set when completing, clear when reopening
+      if (status !== undefined && status !== existing.status) {
+        if (status === "completed") {
+          // Set completed_at to current time when marking as completed
+          updates.push("completed_at = ?");
+          params.push(new Date().toISOString());
+        } else if (existing.status === "completed") {
+          // Clear completed_at when reopening a completed task
+          updates.push("completed_at = NULL");
+        }
       }
 
       // Append all field change notes

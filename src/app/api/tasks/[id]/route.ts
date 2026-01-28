@@ -200,6 +200,18 @@ export const PUT = withErrorHandling(
         if (note) fieldChanges.push(note);
       }
 
+      // Track completed_at: set when completing, clear when reopening
+      if (status !== undefined && status !== existing.status) {
+        if (status === "completed") {
+          // Set completed_at to current time when marking as completed
+          updates.push("completed_at = ?");
+          paramsList.push(new Date().toISOString());
+        } else if (existing.status === "completed") {
+          // Clear completed_at when reopening a completed task
+          updates.push("completed_at = NULL");
+        }
+      }
+
       // Append all field change notes
       if (fieldChanges.length > 0) {
         for (const note of fieldChanges) {
