@@ -34,7 +34,7 @@ interface PageProps {
 }
 
 async function getProject(id: number): Promise<Project | null> {
-  const db = getDb();
+  const db = await getDb();
   try {
     const project = db
       .prepare(
@@ -66,7 +66,7 @@ async function getProject(id: number): Promise<Project | null> {
 }
 
 async function getTasks(projectId: number): Promise<Task[]> {
-  const db = getDb();
+  const db = await getDb();
   try {
     return db
       .prepare(

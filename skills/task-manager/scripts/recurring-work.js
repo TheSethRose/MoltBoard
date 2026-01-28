@@ -57,6 +57,15 @@ function getTaskStatuses() {
 
 const TASK_STATUSES = getTaskStatuses();
 
+const REVIEW_STATUS_ENV =
+  process.env.TASK_STATUS_REVIEW ||
+  process.env.NEXT_PUBLIC_TASK_STATUS_REVIEW ||
+  "review";
+
+if (!TASK_STATUSES.includes(REVIEW_STATUS_ENV)) {
+  TASK_STATUSES.push(REVIEW_STATUS_ENV);
+}
+
 function resolveStatus(envKey, fallback) {
   const raw = process.env[envKey] || fallback;
   if (TASK_STATUSES.includes(raw)) return raw;

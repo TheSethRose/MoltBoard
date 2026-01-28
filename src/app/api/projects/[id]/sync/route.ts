@@ -527,7 +527,7 @@ export const POST = withErrorHandling(
 
 // Helper function to sync a single issue to a task
 async function syncIssueToTask(
-  db: ReturnType<typeof getDb>,
+  db: Awaited<ReturnType<typeof getDb>>,
   issue: {
     number: number;
     title: string;

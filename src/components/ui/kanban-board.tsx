@@ -6,16 +6,15 @@ import { formatStatusLabel } from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
 import {
   Plus,
-  X,
   AlertCircle,
   ArrowUp,
   Minus,
   ArrowDown,
-  Search,
   Square,
   CheckSquare,
 } from "lucide-react";
-import { DeleteButton } from "./delete-button";
+import { FilterBar, type KanbanProject as FilterKanbanProject } from "./kanban-board/filter-bar";
+export type KanbanProject = FilterKanbanProject;
 
 export interface KanbanTask {
   id: number;
@@ -27,7 +26,7 @@ export interface KanbanTask {
   order?: number;
   createdAt?: string;
   notes?: string;
-  blocked_by?: number[]; // Array of task_numbers this task depends on
+  blocked_by?: number[];
   project_id?: number | null;
 }
 
@@ -35,11 +34,6 @@ export interface KanbanColumn {
   id: TaskStatus;
   title: string;
   tasks: KanbanTask[];
-}
-
-export interface KanbanProject {
-  id: number;
-  name: string;
 }
 
 export interface KanbanBoardProps {
@@ -56,7 +50,6 @@ export interface KanbanBoardProps {
   ) => void;
   onTaskReorder?: (status: KanbanTask["status"], taskIds: number[]) => void;
   onTaskDelete?: (taskId: number) => void;
-  /** Direct delete - bypasses confirmation modal */
   onDeleteDirect?: (taskId: number) => void;
   onTaskEdit?: (task: KanbanTask) => void;
   onAddClick?: (status: KanbanTask["status"]) => void;
@@ -146,212 +139,7 @@ const getStatusConfig = (status: string) =>
     color: "bg-slate-500/20 text-slate-400 border-slate-500/30",
   };
 
-const ALL_TAGS = [
-  "bug",
-  "feature",
-  "task",
-  "chore",
-  "research",
-  "spike",
-  "maintenance",
-  "safety",
-  "audit",
-];
-const ALL_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
-
 type BlockedFilter = "all" | "unblocked" | "blocked";
-
-function FilterBar({
-  tagFilter,
-  priorityFilter,
-  searchQuery,
-  blockedFilter,
-  projects,
-  projectFilter,
-  onTagChange,
-  onPriorityChange,
-  onSearchChange,
-  onBlockedChange,
-  onProjectChange,
-  onClear,
-  tagColors,
-}: {
-  tagFilter: string[];
-  priorityFilter: string[];
-  searchQuery: string;
-  blockedFilter: BlockedFilter;
-  projects?: KanbanProject[];
-  projectFilter: number | "all";
-  onTagChange: (tag: string) => void;
-  onPriorityChange: (priority: string) => void;
-  onSearchChange: (query: string) => void;
-  onBlockedChange: (filter: BlockedFilter) => void;
-  onProjectChange: (projectId: number | "all") => void;
-  onClear: () => void;
-  tagColors?: Record<string, string>;
-}) {
-  const hasFilters =
-    tagFilter.length > 0 ||
-    priorityFilter.length > 0 ||
-    searchQuery.length > 0 ||
-    blockedFilter !== "all" ||
-    projectFilter !== "all";
-
-  return (
-    <div className="mb-4 p-3 bg-card/50 border border-border rounded-lg">
-      {/* Row 1: Search + Project filter */}
-      <div className="flex gap-3 mb-3">
-        {/* Search input */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search
-            size={14}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search tasks…"
-            className="w-full pl-8 pr-3 py-1.5 text-base md:text-sm bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => onSearchChange("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 min-h-[24px] min-w-[24px] flex items-center justify-center touch-action-manipulation"
-              aria-label="Clear search"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
-        {/* Project filter dropdown */}
-        {projects && projects.length > 0 && (
-          <div className="relative min-w-[180px]">
-            <select
-              value={projectFilter}
-              onChange={(e) =>
-                onProjectChange(
-                  e.target.value === "all" ? "all" : Number(e.target.value),
-                )
-              }
-              className="w-full px-3 py-1.5 text-base md:text-sm bg-background border border-border rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer touch-action-manipulation"
-              style={{
-                backgroundColor: "var(--background)",
-                color: "var(--foreground)",
-              }}
-            >
-              <option value="all">All Projects</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Row 2: Filter chips */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <span className="text-xs text-muted-foreground font-medium">
-          Filter:
-        </span>
-
-        {/* Blocked/Unblocked filter */}
-        <div className="flex gap-1">
-          <button
-            onClick={() =>
-              onBlockedChange(
-                blockedFilter === "unblocked" ? "all" : "unblocked",
-              )
-            }
-            className={cn(
-              "px-2 py-0.5 text-xs rounded border transition-colors",
-              blockedFilter === "unblocked"
-                ? "bg-green-500/20 text-green-400 border-green-500/30"
-                : "bg-transparent text-muted-foreground border-border hover:bg-accent",
-            )}
-          >
-            Unblocked
-          </button>
-          <button
-            onClick={() =>
-              onBlockedChange(blockedFilter === "blocked" ? "all" : "blocked")
-            }
-            className={cn(
-              "px-2 py-0.5 text-xs rounded border transition-colors",
-              blockedFilter === "blocked"
-                ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
-                : "bg-transparent text-muted-foreground border-border hover:bg-accent",
-            )}
-          >
-            Blocked
-          </button>
-        </div>
-
-        <div className="w-px h-4 bg-border" />
-
-        {/* Priority buttons */}
-        <div className="flex gap-1">
-          {ALL_PRIORITIES.map((p) => {
-            const isActive = priorityFilter.includes(p);
-            return (
-              <button
-                key={p}
-                onClick={() => onPriorityChange(p)}
-                className={cn(
-                  "px-2 py-0.5 text-xs rounded border transition-colors",
-                  isActive
-                    ? DEFAULT_PRIORITY_COLORS[p] + " border-current"
-                    : "bg-transparent text-muted-foreground border-border hover:bg-accent",
-                )}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="w-px h-4 bg-border" />
-
-        {/* Tag buttons */}
-        <div className="flex gap-1 flex-wrap">
-          {ALL_TAGS.map((tag) => {
-            const isActive = tagFilter.includes(tag);
-            const colorClass =
-              tagColors?.[tag] ||
-              DEFAULT_TAG_COLORS[tag] ||
-              DEFAULT_TAG_COLORS.task;
-            return (
-              <button
-                key={tag}
-                onClick={() => onTagChange(tag)}
-                className={cn(
-                  "px-2 py-0.5 text-xs rounded border transition-colors",
-                  isActive
-                    ? colorClass + " border-current"
-                    : "bg-transparent text-muted-foreground border-border hover:bg-accent",
-                )}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-
-        {hasFilters && (
-          <button
-            onClick={onClear}
-            className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function KanbanBoard({
   columns: initialColumns,
@@ -429,18 +217,16 @@ export function KanbanBoard({
   };
 
   const shouldShowTask = (task: KanbanTask) => {
-    // Project filter
     if (projectFilter !== "all" && task.project_id !== projectFilter) {
       return false;
     }
 
-    // Blocked filter
     if (blockedFilter === "unblocked") {
       if (task.blocked_by && task.blocked_by.length > 0) return false;
     } else if (blockedFilter === "blocked") {
       if (!task.blocked_by || task.blocked_by.length === 0) return false;
     }
-    // Search filter - case-insensitive text match
+
     if (searchQuery.length > 0) {
       const searchLower = searchQuery.toLowerCase();
       const matchesText = task.text.toLowerCase().includes(searchLower);
@@ -449,6 +235,7 @@ export function KanbanBoard({
       );
       if (!matchesText && !matchesTags) return false;
     }
+
     if (
       priorityFilter.length > 0 &&
       task.priority &&
@@ -456,10 +243,12 @@ export function KanbanBoard({
     ) {
       return false;
     }
+
     if (tagFilter.length > 0 && task.tags) {
       const hasMatchingTag = tagFilter.some((t) => task.tags?.includes(t));
       if (!hasMatchingTag) return false;
     }
+
     return true;
   };
 
@@ -487,6 +276,7 @@ export function KanbanBoard({
   };
 
   const handleDrop = (
+    e: React.DragEvent,
     targetStatus: KanbanTask["status"],
     targetIndex: number,
   ) => {
@@ -540,13 +330,12 @@ export function KanbanBoard({
     }
   };
 
-  // Horizontal scroll by dragging
   const [isScrolling, setIsScrolling] = React.useState(false);
   const [scrollStartX, setScrollStartX] = React.useState(0);
   const [scrollStartScrollLeft, setScrollStartScrollLeft] = React.useState(0);
 
   const handleScrollMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
+    if (e.button !== 0) return;
     if (draggedTask) return;
     if (e.target instanceof HTMLElement) {
       if (e.target.closest('[draggable="true"]')) return;
@@ -645,13 +434,11 @@ export function KanbanBoard({
           const config = getStatusConfig(column.id);
           const filteredTasks = column.tasks.filter(shouldShowTask);
           const sortedTasks = [...filteredTasks].sort((a, b) => {
-            // 1. Unblocked tasks first (no blocked_by or empty array)
             const aBlocked = a.blocked_by && a.blocked_by.length > 0;
             const bBlocked = b.blocked_by && b.blocked_by.length > 0;
             if (!aBlocked && bBlocked) return -1;
             if (aBlocked && !bBlocked) return 1;
 
-            // 2. Priority (urgent > high > medium > low > none)
             const priorityOrder: Record<string, number> = {
               urgent: 0,
               high: 1,
@@ -662,201 +449,37 @@ export function KanbanBoard({
             const bPrio = b.priority ? priorityOrder[b.priority] : 4;
             if (aPrio !== bPrio) return aPrio - bPrio;
 
-            // 3. Sort order (lower first)
             if (a.order !== undefined && b.order !== undefined)
               return a.order - b.order;
 
             return 0;
           });
-          const isCompleted = column.id === "completed";
 
           return (
-            <div
+            <KanbanColumn
               key={column.id}
-              className={cn(
-                "rounded-lg p-2 transition-all duration-200 flex flex-col flex-shrink-0 w-[18rem] h-full",
-                "bg-card border-2",
-                dropTarget?.status === column.id
-                  ? "border-primary/50 bg-primary/5"
-                  : "border-border",
-              )}
-            >
-              {/* Pinned header */}
-              <div className="mb-2 flex items-center justify-between px-1 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onSelectColumn?.(column.id)}
-                      className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
-                      aria-label={`Select all in ${column.title}`}
-                    >
-                      <Square size={14} />
-                    </button>
-                    <button
-                      onClick={() => onDeselectColumn?.(column.id)}
-                      className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
-                      aria-label={`Deselect all in ${column.title}`}
-                    >
-                      <CheckSquare size={14} />
-                    </button>
-                  </div>
-                  <div
-                    className={cn("h-2 w-2 rounded", config.dot)}
-                    aria-hidden="true"
-                  />
-                  <h2 className="text-xs font-[600] text-foreground">
-                    {column.title} ({sortedTasks.length}/{column.tasks.length})
-                  </h2>
-                </div>
-                <button
-                  onClick={() => onAddClick?.(column.id)}
-                  className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 touch-action-manipulation"
-                  aria-label={`Add task to ${column.title}`}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-
-              {/* Scrollable task container */}
-              <div className="flex flex-col gap-2 min-h-[100px] overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                {sortedTasks.map((task, index) => {
-                  const isDragging = draggedTask?.task.id === task.id;
-                  const isOverTarget =
-                    dropTarget?.status === column.id &&
-                    dropTarget?.index === index;
-                  const isSelected = selectedTaskId === task.id;
-
-                  return (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={() =>
-                        handleDragStart(task, column.id, index)
-                      }
-                      onDragOver={(e) => handleDragOver(e, column.id, index)}
-                      onDrop={(e) => {
-                        e.stopPropagation();
-                        handleDrop(column.id, index);
-                      }}
-                      onDragEnd={handleDragEnd}
-                      onClick={() => {
-                        onTaskEdit?.(task);
-                        onTaskSelect?.(task.id);
-                      }}
-                      onDoubleClick={() => {
-                        onTaskEdit?.(task);
-                        onTaskSelect?.(task.id);
-                      }}
-                      onFocus={() => onTaskSelect?.(task.id)}
-                      className={cn(
-                        "cursor-grab rounded border border-white/10 bg-card p-2 shadow-sm transition-all duration-150",
-                        "hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing",
-                        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background",
-                        isDragging && "rotate-2 opacity-50 z-50",
-                        isOverTarget &&
-                          "border-primary border-dashed scale-105",
-                        isCompleted && "opacity-75",
-                        selectedTaskIds?.has(task.id) &&
-                          "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary",
-                        isSelected &&
-                          "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary",
-                      )}
-                      tabIndex={0}
-                      aria-label={`Task: ${task.text}${task.priority ? `, priority: ${task.priority}` : ""}`}
-                      role="button"
-                    >
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border",
-                              config.color,
-                            )}
-                          >
-                            {config.label}
-                          </span>
-                          {task.priority && (
-                            <span
-                              className={cn(
-                                "flex items-center gap-0.5",
-                                getPriorityColor(task.priority),
-                              )}
-                              aria-label={`Priority: ${task.priority}`}
-                            >
-                              {getPriorityIcon(task.priority)}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const markdown = `### Task #${task.task_number}\n- Status: ${task.status}\n- Priority: ${task.priority || "none"}\n- Tags: ${task.tags?.join(", ") || "none"}\nTitle: ${task.text}\nDescription: ${task.notes || "(no details)"}`;
-                            navigator.clipboard.writeText(markdown);
-                          }}
-                          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer mr-1 min-w-[2.5rem] min-h-[24px] flex items-center justify-center touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                          style={{ fontVariantNumeric: "tabular-nums" }}
-                          aria-label={`Copy task #${task.task_number} details`}
-                        >
-                          #{task.task_number > 0 ? task.task_number : "?"}
-                        </button>
-                        <DeleteButton
-                          onDelete={() => onDeleteDirect?.(task.id)}
-                          size="sm"
-                        />
-                      </div>
-
-                      {task.tags && task.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {task.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className={cn(
-                                "inline-flex items-center rounded px-1 py-0.5 text-[9px] font-medium border",
-                                getTagColor(tag),
-                              )}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      <p className="text-xs text-card-foreground mt-1.5 break-words overflow-hidden">
-                        {task.text}
-                      </p>
-
-                      {task.blocked_by && task.blocked_by.length > 0 && (
-                        <div className="flex items-center gap-1 mt-2 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5">
-                          <span className="font-medium">Blocked by:</span>
-                          <span>
-                            {task.blocked_by.map((n) => `#${n}`).join(", ")}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {sortedTasks.length === 0 && (
-                  <div
-                    className="flex min-h-[60px] items-center justify-center text-xs text-muted-foreground border-2 border-dashed border-border/50 rounded"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setDropTarget({ status: column.id, index: 0 });
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDrop(column.id, 0);
-                    }}
-                    onDragLeave={() => setDropTarget(null)}
-                  >
-                    {column.tasks.length > 0 ? "No matching tasks" : "No tasks"}
-                  </div>
-                )}
-              </div>
-            </div>
+              column={column}
+              config={config}
+              tasks={sortedTasks}
+              isDropTarget={dropTarget?.status === column.id}
+              draggedTask={draggedTask}
+              dropTarget={dropTarget}
+              selectedTaskId={selectedTaskId}
+              selectedTaskIds={selectedTaskIds}
+              onAddClick={() => onAddClick?.(column.id)}
+              onSelectColumn={() => onSelectColumn?.(column.id)}
+              onDeselectColumn={() => onDeselectColumn?.(column.id)}
+              onTaskEdit={(task) => onTaskEdit?.(task)}
+              onTaskSelect={(taskId) => onTaskSelect?.(taskId)}
+              onDeleteDirect={(taskId) => onDeleteDirect?.(taskId)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              getTagColor={getTagColor}
+              getPriorityColor={getPriorityColor}
+              getPriorityIcon={getPriorityIcon}
+            />
           );
         })}
       </div>

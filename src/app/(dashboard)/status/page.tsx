@@ -189,7 +189,7 @@ export default function StatusPage() {
           System Status
         </h1>
         <p
-          className="text-sm text-muted-foreground mt-1 font-inter"
+          className="text-sm text-muted-foreground mt-1 "
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           Updated: {lastUpdate.toLocaleTimeString()}
@@ -203,10 +203,10 @@ export default function StatusPage() {
           <CardContent className="py-4 px-5 h-full">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-sm font-semibold text-foreground font-inter">
+                <p className="text-sm font-semibold text-foreground ">
                   System Health
                 </p>
-                <p className="text-xs text-muted-foreground font-inter">
+                <p className="text-xs text-muted-foreground ">
                   Core metrics overview
                 </p>
               </div>
@@ -227,11 +227,11 @@ export default function StatusPage() {
 
             {/* Uptime prominently displayed */}
             <div className="mb-4">
-              <p className="text-xs text-muted-foreground font-inter mb-1">
+              <p className="text-xs text-muted-foreground  mb-1">
                 Uptime
               </p>
               <p
-                className="text-3xl font-bold text-foreground font-inter"
+                className="text-3xl font-bold text-foreground "
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
                 {uptimeData?.formatted ||
@@ -247,15 +247,15 @@ export default function StatusPage() {
                   variant="outline"
                   className={
                     gitStatus === "clean"
-                      ? "bg-green-500/20 text-green-400 border-green-500/30 font-inter"
+                      ? "bg-green-500/20 text-green-400 border-green-500/30 "
                       : gitStatus === "not a repo"
-                        ? "bg-red-500/20 text-red-400 border-red-500/30 font-inter"
-                        : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 font-inter"
+                        ? "bg-red-500/20 text-red-400 border-red-500/30 "
+                        : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 "
                   }
                 >
                   {gitStatus || data?.health?.git || "—"}
                 </Badge>
-                <span className="text-xs text-muted-foreground font-inter">
+                <span className="text-xs text-muted-foreground ">
                   Git
                 </span>
               </div>
@@ -267,7 +267,7 @@ export default function StatusPage() {
                       : "bg-red-400"
                   }`}
                 />
-                <span className="text-sm text-foreground font-inter">
+                <span className="text-sm text-foreground ">
                   {databaseStatus?.status === "connected"
                     ? `${databaseStatus.count} tasks`
                     : databaseStatus?.status || "—"}
@@ -281,7 +281,7 @@ export default function StatusPage() {
         <Card className="bg-card border-border">
           <CardContent className="py-3 px-4">
             <div className="flex justify-between items-start mb-2">
-              <p className="text-xs text-muted-foreground font-inter">
+              <p className="text-xs text-muted-foreground ">
                 Session
               </p>
               <Button
@@ -301,7 +301,7 @@ export default function StatusPage() {
               </Button>
             </div>
             <p
-              className="text-sm font-mono text-foreground font-inter truncate"
+              className="text-sm font-mono text-foreground  truncate"
               style={{ fontVariantNumeric: "tabular-nums" }}
               title={data?.session?.sessionId || undefined}
             >
@@ -313,9 +313,9 @@ export default function StatusPage() {
         {/* PID Card */}
         <Card className="bg-card border-border">
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground mb-1 font-inter">PID</p>
+            <p className="text-xs text-muted-foreground mb-1 ">PID</p>
             <p
-              className="text-xl font-semibold text-foreground font-inter"
+              className="text-xl font-semibold text-foreground "
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {data?.session?.pid || "—"}
@@ -326,11 +326,11 @@ export default function StatusPage() {
         {/* Start Time Card */}
         <Card className="bg-card border-border">
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground mb-1 font-inter">
+            <p className="text-xs text-muted-foreground mb-1 ">
               Started
             </p>
             <p
-              className="text-sm text-foreground font-inter"
+              className="text-sm text-foreground "
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {data?.session?.startTime
@@ -348,11 +348,11 @@ export default function StatusPage() {
           <Card className="col-span-2 row-span-1 bg-card border-border">
             <CardContent className="py-4 px-4">
               <div className="flex justify-between items-center mb-3">
-                <p className="text-xs text-muted-foreground font-inter">
+                <p className="text-xs text-muted-foreground ">
                   Memory Usage
                 </p>
                 <p
-                  className="text-xs text-muted-foreground font-inter"
+                  className="text-xs text-muted-foreground "
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {formatBytes(data.memory.heapUsed)} /{" "}
@@ -379,51 +379,51 @@ export default function StatusPage() {
         {/* Task Summary - Bento Box Style */}
         <Card className="col-span-2 row-span-1 bg-card border-border">
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground mb-3 font-inter">
+            <p className="text-xs text-muted-foreground mb-3 ">
               Task Status
             </p>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div className="p-2 rounded bg-green-500/10">
                 <p
-                  className="text-xl font-bold text-green-400 font-inter"
+                  className="text-xl font-bold text-green-400 "
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {statusCounts.ready}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-inter">
+                <p className="text-[10px] text-muted-foreground ">
                   Ready
                 </p>
               </div>
               <div className="p-2 rounded bg-blue-500/10">
                 <p
-                  className="text-xl font-bold text-blue-400 font-inter"
+                  className="text-xl font-bold text-blue-400 "
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {statusCounts.inProgress}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-inter">
+                <p className="text-[10px] text-muted-foreground ">
                   In Progress
                 </p>
               </div>
               <div className="p-2 rounded bg-emerald-500/10">
                 <p
-                  className="text-xl font-bold text-emerald-400 font-inter"
+                  className="text-xl font-bold text-emerald-400 "
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {statusCounts.completed}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-inter">
+                <p className="text-[10px] text-muted-foreground ">
                   Done
                 </p>
               </div>
               <div className="p-2 rounded bg-red-500/10">
                 <p
-                  className="text-xl font-bold text-red-400 font-inter"
+                  className="text-xl font-bold text-red-400 "
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {statusCounts.blocked}
                 </p>
-                <p className="text-[10px] text-muted-foreground font-inter">
+                <p className="text-[10px] text-muted-foreground ">
                   Blocked
                 </p>
               </div>
@@ -435,38 +435,38 @@ export default function StatusPage() {
         {data?.tokens && (
           <Card className="col-span-2 row-span-1 bg-card border-border">
             <CardContent className="py-3 px-4">
-              <p className="text-xs text-muted-foreground mb-2 font-inter">
+              <p className="text-xs text-muted-foreground mb-2 ">
                 Token Usage
               </p>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground font-inter">
+                  <p className="text-xs text-muted-foreground ">
                     Input
                   </p>
                   <p
-                    className="text-lg font-semibold text-foreground font-inter"
+                    className="text-lg font-semibold text-foreground "
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {data.tokens.input.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-inter">
+                  <p className="text-xs text-muted-foreground ">
                     Output
                   </p>
                   <p
-                    className="text-lg font-semibold text-foreground font-inter"
+                    className="text-lg font-semibold text-foreground "
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {data.tokens.output.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-inter">
+                  <p className="text-xs text-muted-foreground ">
                     Total
                   </p>
                   <p
-                    className="text-lg font-semibold text-foreground font-inter"
+                    className="text-lg font-semibold text-foreground "
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {data.tokens.total.toLocaleString()}
@@ -481,7 +481,7 @@ export default function StatusPage() {
         {metricsData && metricsData.history.length > 0 && (
           <Card className="col-span-2 row-span-1 bg-card border-border">
             <CardContent className="py-4">
-              <p className="text-xs text-muted-foreground mb-3 font-inter">
+              <p className="text-xs text-muted-foreground mb-3 ">
                 Task History (7 days)
               </p>
               <div className="flex items-end gap-1 h-16">
@@ -522,7 +522,7 @@ export default function StatusPage() {
         {error && (
           <Card className="col-span-4 bg-card border-border">
             <CardContent className="py-4">
-              <p className="text-destructive font-inter" role="alert">
+              <p className="text-destructive " role="alert">
                 Error: {error}
               </p>
             </CardContent>

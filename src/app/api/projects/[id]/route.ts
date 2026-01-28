@@ -340,13 +340,13 @@ export const PUT = withErrorHandling(
             path.join(getWorkspacePath(), "projects");
           localPath = path.join(workspaceRoot, sanitizedName);
           fs.mkdirSync(localPath, { recursive: true });
-          const db2 = getDb();
+          const db2 = await getDb();
           db2
             .prepare(
               "UPDATE projects SET local_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             )
             .run(localPath, projectId);
-          releaseDb(db2);
+          await releaseDb(db2);
         }
 
         if (localPath) {

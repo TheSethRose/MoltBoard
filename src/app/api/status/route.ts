@@ -145,7 +145,7 @@ function parseUptime(output: string): UptimeData {
   return { raw, formatted: formatted.trim(), days, hours, minutes };
 }
 
-function getTasksFromDb(): TaskSummary[] {
+async function getTasksFromDb(): Promise<TaskSummary>[] {
   try {
     const db = await getDb();
     const rows = db
