@@ -30,8 +30,8 @@ import { Database } from "bun:sqlite";
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
-import { randomUUID } from "crypto";
-import workspacePath from "../../scripts/workspace-path.js";
+import workspacePath from "./workspace-path.js";
+import { appendWorkNote } from "./work-notes.js";
 
 const { getWorkspacePath } = workspacePath;
 
@@ -549,25 +549,11 @@ Task ID: ${task.id}`;
           }
         }
 
-        // Add work note to task about the git operation
-        const workNote = {
-          id: randomUUID(),
-          content: `Auto-commit created by worker: "${commitMessage.split("\n")[0]}"`,
-          author: "system",
-          timestamp: new Date().toISOString(),
-        };
-
-        const existingNotes = db
-          .prepare("SELECT work_notes FROM tasks WHERE id = ?")
-          .get(task.id);
-        const notes = existingNotes?.work_notes
-          ? JSON.parse(existingNotes.work_notes)
-          : [];
-        notes.push(workNote);
-
-        db.prepare("UPDATE tasks SET work_notes = ? WHERE id = ?").run(
-          JSON.stringify(notes),
+        appendWorkNote(
+          db,
           task.id,
+          `Auto-commit created by worker: "${commitMessage.split("\n")[0]}"`,
+          "system",
         );
       } else {
         log("debug", `No changes to commit for task #${task.task_number}`);

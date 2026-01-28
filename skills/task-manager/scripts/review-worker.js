@@ -7,9 +7,9 @@
 
 import path from "node:path";
 import fs from "node:fs";
-import crypto from "node:crypto";
 import { Database } from "bun:sqlite";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();
 const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
@@ -70,35 +70,6 @@ if (!fs.existsSync(DB_PATH)) {
 
 const db = new Database(DB_PATH);
 
-function parseWorkNotes(workNotesJson) {
-  try {
-    return JSON.parse(workNotesJson || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function appendWorkNote(taskId, content, author = "system") {
-  const task = db
-    .prepare("SELECT work_notes FROM tasks WHERE id = ?")
-    .get(taskId);
-  const notes = parseWorkNotes(task?.work_notes);
-
-  const newNote = {
-    id: crypto.randomUUID(),
-    content,
-    author,
-    timestamp: new Date().toISOString(),
-  };
-
-  notes.push(newNote);
-  db.prepare(
-    "UPDATE tasks SET work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(JSON.stringify(notes), taskId);
-
-  return newNote;
-}
-
 function hasRecentReviewComment(workNotesJson) {
   const notes = parseWorkNotes(workNotesJson);
   const now = Date.now();
@@ -127,11 +98,15 @@ function markApproved(taskId, summary, activity) {
     return;
   }
 
-  appendWorkNote(taskId, `review:done: ${summary}`);
+  appendWorkNote(db, taskId, `review:done: ${summary}`);
   if (activity) {
-    appendWorkNote(taskId, `activity: ${activity}`);
+    appendWorkNote(db, taskId, `activity: ${activity}`);
   } else {
-    appendWorkNote(taskId, "activity: review approved; awaiting human confirmation");
+    appendWorkNote(
+      db,
+      taskId,
+      "activity: review approved; awaiting human confirmation",
+    );
   }
   console.log(`\n✓ Approved task #${taskId} → ${TASK_STATUS.review} (awaiting human)`);
 }
@@ -146,8 +121,8 @@ function requestChanges(taskId, summary, activity) {
     "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
   ).run(TASK_STATUS.ready, taskId);
 
-  appendWorkNote(taskId, `review:failed: ${summary}`);
-  if (activity) appendWorkNote(taskId, `activity: ${activity}`);
+  appendWorkNote(db, taskId, `review:failed: ${summary}`);
+  if (activity) appendWorkNote(db, taskId, `activity: ${activity}`);
   console.log(
     `\n✓ Requested changes for task #${taskId} → ${TASK_STATUS.ready}`,
   );
@@ -200,6 +175,18 @@ console.log("=== Review Queue ===");
 console.log(`#${nextTask.task_number}: ${nextTask.text}`);
 if (nextTask.notes) {
   console.log(`\nNotes:\n${nextTask.notes}`);
+}
+if (nextTask.work_notes) {
+  const notes = parseWorkNotes(nextTask.work_notes);
+  if (notes.length > 0) {
+    console.log("\nRecent Work Notes:");
+    notes.slice(-10).forEach((note) => {
+      const author = note.author || "system";
+      const ts = note.timestamp || "";
+      const content = note.content || "";
+      console.log(`- [${author}] ${ts} ${content}`.trim());
+    });
+  }
 }
 console.log("\nInstructions:");
 console.log("1) Review work notes and changes.");

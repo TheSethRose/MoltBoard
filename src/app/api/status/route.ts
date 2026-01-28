@@ -178,61 +178,60 @@ function getTasksFromDb(): TaskSummary[] {
 }
 
 async function getSystemHealth(): Promise<SystemHealth> {
-  const health: SystemHealth = {
-    moltbot: "unknown",
-    git: "unknown",
-    uptime: { raw: "", formatted: "Unknown", days: 0, hours: 0, minutes: 0 },
-  };
+  // Parallelize independent system health checks using Promise.allSettled
+  const [moltbotResult, gitResult, uptimeResult] = await Promise.allSettled([
+    execAsync("moltbot status 2>&1 | head -5"),
+    execAsync(
+      `cd ${getWorkspacePath()} && git status --porcelain 2>&1 | head -10`,
+    ),
+    execAsync("uptime"),
+  ]);
 
-  try {
-    const { stdout: moltbotStatus } = await execAsync(
-      "moltbot status 2>&1 | head -5",
-    );
-    health.moltbot = stripAnsi(moltbotStatus) || "running";
-  } catch (error) {
-    logError(error as Error, {
+  let moltbot = "unavailable";
+  if (moltbotResult.status === "fulfilled") {
+    moltbot = stripAnsi(moltbotResult.value.stdout) || "running";
+  } else {
+    logError(moltbotResult.reason as Error, {
       route: "/api/status",
       method: "getSystemHealth/moltbot",
     });
-    health.moltbot = "unavailable";
   }
 
-  try {
-    const workspacePath = getWorkspacePath();
-    const { stdout: gitStatus } = await execAsync(
-      `cd ${workspacePath} && git status --porcelain 2>&1 | head -10`,
-    );
-    const changes = gitStatus
+  let git = "not a repo";
+  if (gitResult.status === "fulfilled") {
+    const changes = gitResult.value.stdout
       .trim()
       .split("\n")
       .filter((l) => l).length;
-    health.git = changes > 0 ? `${changes} uncommitted` : "clean";
-  } catch (error) {
-    logError(error as Error, {
+    git = changes > 0 ? `${changes} uncommitted` : "clean";
+  } else {
+    logError(gitResult.reason as Error, {
       route: "/api/status",
       method: "getSystemHealth/git",
     });
-    health.git = "not a repo";
   }
 
-  try {
-    const { stdout: uptime } = await execAsync("uptime");
-    health.uptime = parseUptime(uptime);
-  } catch (error) {
-    logError(error as Error, {
+  let uptime = {
+    raw: "unavailable",
+    formatted: "Unknown",
+    days: 0,
+    hours: 0,
+    minutes: 0,
+  };
+  if (uptimeResult.status === "fulfilled") {
+    uptime = parseUptime(uptimeResult.value.stdout);
+  } else {
+    logError(uptimeResult.reason as Error, {
       route: "/api/status",
       method: "getSystemHealth/uptime",
     });
-    health.uptime = {
-      raw: "unavailable",
-      formatted: "Unknown",
-      days: 0,
-      hours: 0,
-      minutes: 0,
-    };
   }
 
-  return health;
+  return {
+    moltbot,
+    git,
+    uptime,
+  };
 }
 
 function getProcessSessionInfo(): ProcessSessionInfo {
@@ -327,27 +326,33 @@ async function getMoltbotSessionInfo(): Promise<SessionInfo | undefined> {
 // GET - Fetch status
 export const GET = withErrorHandling(
   async (): Promise<NextResponse> => {
-    let tasks: TaskSummary[] | null = null;
-    let health: SystemHealth | null = null;
+    // Parallelize independent status fetches
+    const [tasksResult, healthResult, sessionResult, tokensResult] =
+      await Promise.allSettled([
+        (() => {
+          try {
+            return getTasksFromDb();
+          } catch (error) {
+            logError(error as Error, { route: "/api/status", method: "GET/tasks" });
+            return null;
+          }
+        })(),
+        getSystemHealth().catch((error) => {
+          logError(error as Error, { route: "/api/status", method: "GET/health" });
+          return null;
+        }),
+        getMoltbotSessionInfo(),
+        getTokenUsage(),
+      ]);
 
-    try {
-      tasks = getTasksFromDb();
-    } catch (error) {
-      logError(error as Error, { route: "/api/status", method: "GET/tasks" });
-      // Continue without tasks on error
-    }
-
-    try {
-      health = await getSystemHealth();
-    } catch (error) {
-      logError(error as Error, { route: "/api/status", method: "GET/health" });
-      // Continue without health on error
-    }
-
-    const sessionInfo = await getMoltbotSessionInfo();
-    const processSession = getProcessSessionInfo();
-    const memory = getMemoryUsage();
-    const tokens = await getTokenUsage();
+    const tasks =
+      tasksResult.status === "fulfilled" ? tasksResult.value : null;
+    const health =
+      healthResult.status === "fulfilled" ? healthResult.value : null;
+    const sessionInfo =
+      sessionResult.status === "fulfilled" ? sessionResult.value : undefined;
+    const tokens =
+      tokensResult.status === "fulfilled" ? tokensResult.value : undefined;
 
     const response: StatusResponse = {
       tasks: tasks || [],
@@ -363,8 +368,8 @@ export const GET = withErrorHandling(
         },
       },
       sessionInfo,
-      processSession,
-      memory,
+      processSession: getProcessSessionInfo(),
+      memory: getMemoryUsage(),
       disk: getDiskUsage(),
       tokens,
       timestamp: new Date().toISOString(),

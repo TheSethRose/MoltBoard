@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 /developer
+repomix-output.xml
 
 # debug
 npm-debug.log*

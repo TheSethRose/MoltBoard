@@ -19,9 +19,9 @@
 import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
-import crypto from "node:crypto";
 import { Database } from "bun:sqlite";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 
 // ============================================================================
 // CONFIGURATION
@@ -131,35 +131,6 @@ function gitPush(cwd) {
 // ============================================================================
 // WORK NOTE HELPERS
 // ============================================================================
-
-function parseWorkNotes(workNotesJson) {
-  try {
-    return JSON.parse(workNotesJson || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function appendWorkNote(db, taskId, content, author = "system") {
-  const task = db
-    .prepare("SELECT work_notes FROM tasks WHERE id = ?")
-    .get(taskId);
-  const notes = parseWorkNotes(task?.work_notes);
-
-  const newNote = {
-    id: crypto.randomUUID(),
-    content,
-    author,
-    timestamp: new Date().toISOString(),
-  };
-
-  notes.push(newNote);
-  db.prepare(
-    "UPDATE tasks SET work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(JSON.stringify(notes), taskId);
-
-  return newNote;
-}
 
 /**
  * Check work_notes for done/blocked signals

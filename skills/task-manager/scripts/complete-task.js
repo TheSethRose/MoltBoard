@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
+import { parseWorkNotes } from "../../../scripts/work-notes.js";
 
 const DB_PATH =
   process.env.TASKS_DB_PATH ||
@@ -117,7 +118,7 @@ async function main() {
   };
 
   // Get existing work_notes and prepend final summary
-  const existingNotes = workNotesJson ? JSON.parse(workNotesJson) : [];
+  const existingNotes = parseWorkNotes(workNotesJson);
   const updatedNotes = [finalNote, ...existingNotes];
 
   // Update task: set status to completed and update work_notes

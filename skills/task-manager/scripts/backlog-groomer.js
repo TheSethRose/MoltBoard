@@ -8,8 +8,8 @@
 
 import path from "node:path";
 import fs from "node:fs";
-import crypto from "node:crypto";
 import { Database } from "bun:sqlite";
+import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();
@@ -66,35 +66,6 @@ if (!fs.existsSync(DB_PATH)) {
 
 const db = new Database(DB_PATH);
 
-function parseWorkNotes(workNotesJson) {
-  try {
-    return JSON.parse(workNotesJson || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function appendWorkNote(taskId, content, author = "system") {
-  const task = db
-    .prepare("SELECT work_notes FROM tasks WHERE id = ?")
-    .get(taskId);
-  const notes = parseWorkNotes(task?.work_notes);
-
-  const newNote = {
-    id: crypto.randomUUID(),
-    content,
-    author,
-    timestamp: new Date().toISOString(),
-  };
-
-  notes.push(newNote);
-  db.prepare(
-    "UPDATE tasks SET work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(JSON.stringify(notes), taskId);
-
-  return newNote;
-}
-
 function hasGroomMarker(workNotesJson) {
   const notes = parseWorkNotes(workNotesJson);
   return notes.some((note) =>
@@ -120,7 +91,7 @@ function markReady(taskId, summary, notesUpdate) {
     ).run(TASK_STATUS.ready, taskId);
   }
 
-  appendWorkNote(taskId, `groom:done: ${summary}`);
+  appendWorkNote(db, taskId, `groom:done: ${summary}`);
   console.log(`\n✓ Groomed task #${taskId} → ${TASK_STATUS.ready}`);
 }
 
@@ -134,10 +105,10 @@ function markBlocked(taskId, reason, activity) {
     "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
   ).run(TASK_STATUS.blocked, taskId);
 
-  appendWorkNote(taskId, `groom:blocked: ${reason}`);
-  appendWorkNote(taskId, `status:blocked: ${reason}`);
+  appendWorkNote(db, taskId, `groom:blocked: ${reason}`);
+  appendWorkNote(db, taskId, `status:blocked: ${reason}`);
   if (activity) {
-    appendWorkNote(taskId, `activity: ${activity}`);
+    appendWorkNote(db, taskId, `activity: ${activity}`);
   }
 
   console.log(`\n✓ Blocked task #${taskId}: ${reason}`);
@@ -186,6 +157,18 @@ console.log("=== Backlog Grooming ===");
 console.log(`#${nextTask.task_number}: ${nextTask.text}`);
 if (nextTask.notes) {
   console.log(`\nCurrent Notes:\n${nextTask.notes}`);
+}
+if (nextTask.work_notes) {
+  const notes = parseWorkNotes(nextTask.work_notes);
+  if (notes.length > 0) {
+    console.log("\nRecent Work Notes:");
+    notes.slice(-10).forEach((note) => {
+      const author = note.author || "system";
+      const ts = note.timestamp || "";
+      const content = note.content || "";
+      console.log(`- [${author}] ${ts} ${content}`.trim());
+    });
+  }
 }
 console.log("\nInstructions:");
 console.log("1) Research and clarify scope, acceptance, and dependencies.");

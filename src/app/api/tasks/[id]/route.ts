@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
-import { DbTask, parseDbTask } from "@/types/task";
+import { DbTask, parseDbTask, WorkNote } from "@/types/task";
 import { isValidTaskStatus } from "@/lib/task-statuses";
+import {
+  mergeWorkNotes,
+  normalizeWorkNote,
+  normalizeWorkNotes,
+  type RawWorkNote,
+} from "@/lib/work-notes";
 import {
   withErrorHandling,
   badRequest,
@@ -70,6 +76,7 @@ export const PUT = withErrorHandling(
         blocked_by,
         work_notes,
         append_work_note,
+        replace_work_notes,
       } = body;
 
       if (status !== undefined && !isValidTaskStatus(status)) {
@@ -127,18 +134,31 @@ export const PUT = withErrorHandling(
         paramsList.push(JSON.stringify(blocked_by));
       }
 
-      // Handle work_notes - either set directly or append a new note
+      // Handle work_notes - either append, merge, or replace
       if (append_work_note !== undefined && append_work_note) {
-        // Append a new work note
-        const newNote = work_notes;
-        const existingNotes = JSON.parse(existing.work_notes || "[]");
-        const updatedNotes = [...existingNotes, newNote];
+        if (work_notes === undefined) {
+          releaseDb(db);
+          throw badRequest(
+            "work_notes is required when append_work_note is true",
+            "WORK_NOTES_REQUIRED",
+          );
+        }
+        const updatedNotes = appendNote(
+          JSON.parse(existing.work_notes || "[]"),
+          work_notes as RawWorkNote,
+        );
         updates.push("work_notes = ?");
         paramsList.push(JSON.stringify(updatedNotes));
       } else if (work_notes !== undefined) {
-        // Replace all work_notes
+        const incomingNotes = Array.isArray(work_notes)
+          ? (work_notes as RawWorkNote[])
+          : [work_notes as RawWorkNote];
+        const existingNotes = JSON.parse(existing.work_notes || "[]");
+        const updatedNotes = replace_work_notes
+          ? normalizeWorkNotes(incomingNotes)
+          : mergeWorkNotes(existingNotes, incomingNotes);
         updates.push("work_notes = ?");
-        paramsList.push(JSON.stringify(work_notes));
+        paramsList.push(JSON.stringify(updatedNotes));
       }
 
       // Validation: Require work_notes when changing to completed (BEFORE update)
@@ -218,6 +238,21 @@ export const PUT = withErrorHandling(
   },
   { context: { route: "/api/tasks/[id]", method: "PUT" } },
 );
+
+function appendNote(
+  existingNotes: RawWorkNote[] | undefined,
+  note: RawWorkNote,
+  defaultAuthor: WorkNote["author"] = "system",
+) {
+  const normalizedExisting = normalizeWorkNotes(existingNotes, {
+    defaultAuthor,
+  });
+  const normalizedNote = normalizeWorkNote(note, {
+    defaultAuthor,
+    fillTimestamp: true,
+  });
+  return [...normalizedExisting, normalizedNote];
+}
 
 // DELETE /api/tasks/[id] - Delete single task
 export const DELETE = withErrorHandling(

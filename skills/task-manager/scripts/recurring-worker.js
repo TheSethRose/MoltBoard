@@ -34,6 +34,7 @@ import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { Database } from "bun:sqlite";
 import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();
 const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
@@ -124,13 +125,13 @@ function appendWorkNoteIfMissing(taskId, marker, content, author = "system") {
     .prepare("SELECT work_notes FROM tasks WHERE id = ?")
     .get(taskId);
   if (!task) return;
-  const existingNotes = task.work_notes ? JSON.parse(task.work_notes) : [];
+  const existingNotes = parseWorkNotes(task.work_notes);
   const hasMarker = existingNotes.some(
     (note) =>
       typeof note?.content === "string" && note.content.includes(marker),
   );
   if (hasMarker) return;
-  appendWorkNote(taskId, content, author);
+  appendWorkNote(db, taskId, content, author);
 }
 
 function getRepoChangeState(task) {
@@ -295,7 +296,7 @@ function completeWithSummary(
   }
 
   // Parse existing work_notes
-  const workNotes = JSON.parse(task.work_notes || "[]");
+  const workNotes = parseWorkNotes(task.work_notes);
 
   // Generate Final Summary note
   const statusLabel =
@@ -339,7 +340,7 @@ function blockTask(taskId, reason, activity) {
     return;
   }
 
-  const workNotes = JSON.parse(task.work_notes || "[]");
+  const workNotes = parseWorkNotes(task.work_notes);
   const newNotes = [
     ...workNotes,
     {
@@ -367,24 +368,6 @@ function blockTask(taskId, reason, activity) {
 }
 
 // Helper: Append a work note to a task
-function appendWorkNote(taskId, content, author = "agent") {
-  const task = db
-    .prepare("SELECT work_notes FROM tasks WHERE id = ?")
-    .get(taskId);
-  if (!task) return;
-  const existingNotes = task.work_notes ? JSON.parse(task.work_notes) : [];
-  const newNote = {
-    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-    content,
-    author,
-    timestamp: new Date().toISOString(),
-  };
-  const updatedNotes = [...existingNotes, newNote];
-  db.prepare(
-    "UPDATE tasks SET work_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(JSON.stringify(updatedNotes), taskId);
-}
-
 // Helper: Update tasks that had this task as a blocker
 function updateBlockersForTask(completedTaskId) {
   const blockedTasks = db
@@ -515,6 +498,7 @@ if (currentTask) {
       );
     } catch {
       appendWorkNote(
+        db,
         currentTask.id,
         `Sandbox warning: unable to set CWD to ${projectRoot}. Current CWD: ${process.cwd()}`,
         "system",
@@ -527,8 +511,19 @@ if (currentTask) {
     );
   }
 
+  const recentNotes = parseWorkNotes(currentTask.work_notes).slice(-10);
+  if (recentNotes.length > 0) {
+    console.log("\nRecent Work Notes:");
+    recentNotes.forEach((note) => {
+      const author = note.author || "system";
+      const ts = note.timestamp || "";
+      const content = note.content || "";
+      console.log(`- [${author}] ${ts} ${content}`.trim());
+    });
+  }
+
   // Check for work_notes/progress details
-  const workNotes = JSON.parse(currentTask.work_notes || "[]");
+  const workNotes = parseWorkNotes(currentTask.work_notes);
   const meaningfulNotes = workNotes.filter((note) => {
     if (!note || typeof note.content !== "string") return false;
     const content = note.content;
@@ -539,7 +534,7 @@ if (currentTask) {
   const hasProgressDetails = meaningfulNotes.length > 0;
 
   if (!hasProgressDetails) {
-    appendWorkNote(currentTask.id, "Started work on task.");
+    appendWorkNote(db, currentTask.id, "Started work on task.");
   }
 
   if (minutesInProgress >= STUCK_THRESHOLD_MINUTES) {
@@ -698,6 +693,17 @@ if (tags.length > 0) {
 
 if (nextTask.notes) {
   console.log(`\nDescription:\n${nextTask.notes}`);
+}
+
+const nextTaskNotes = parseWorkNotes(nextTask.work_notes).slice(-10);
+if (nextTaskNotes.length > 0) {
+  console.log("\nRecent Work Notes:");
+  nextTaskNotes.forEach((note) => {
+    const author = note.author || "system";
+    const ts = note.timestamp || "";
+    const content = note.content || "";
+    console.log(`- [${author}] ${ts} ${content}`.trim());
+  });
 }
 
 // Show blocked tasks waiting on this one

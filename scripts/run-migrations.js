@@ -13,7 +13,7 @@ import { Database } from "bun:sqlite";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import workspacePath from "../../scripts/workspace-path.js";
+import workspacePath from "./workspace-path.js";
 
 const { getWorkspacePath } = workspacePath;
 const __filename = fileURLToPath(import.meta.url);

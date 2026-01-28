@@ -112,12 +112,23 @@ MoltBoard is designed to work with MoltBot's cron system for automated task proc
 
 ### Setting Up the Cron Job
 
-Use MoltBot's cron system to schedule the task worker. See the [MoltBot Cron Jobs documentation](https://docs.molt.bot/automation/cron-jobs#cron-jobs) for details.
+Use MoltBot's cron system to schedule the task workers. See [docs/cron-setup.md](docs/cron-setup.md) for the exact messages and schedules used by this project.
+
+You must also allow any additional models in your Clawdbot or MoltBot config under `agents.defaults.models`, otherwise worker-specific model overrides will be rejected. Example:
+
+```json
+"models": {
+  "minimax/MiniMax-M2.1": {
+    "alias": "Minimax"
+  },
+  "github-copilot/gpt-5.2-codex": {}
+}
+```
 
 ```bash
 # Add the task worker cron job (runs every 3 minutes)
 moltbot cron add "Task Lifecycle Worker" "*/3 * * * *" \
-    "bun /path/to/moltboard/skills/task-manager/scripts/recurring-work.js"
+  "bun /path/to/moltboard/skills/task-manager/scripts/recurring-work.js"
 
 # Verify it's registered
 moltbot cron list
