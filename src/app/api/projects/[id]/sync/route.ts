@@ -63,6 +63,25 @@ function normalizeSelections(
   return results;
 }
 
+// Helper function to log sync activity
+function logSyncActivity(
+  db: Awaited<ReturnType<typeof getDb>>,
+  projectId: number,
+  syncType: "auto" | "manual",
+  summary: string,
+): void {
+  try {
+    db.prepare(
+      `
+      INSERT INTO project_activity (project_id, content, event_type)
+      VALUES (?, ?, ?)
+      `,
+    ).run(projectId, summary, `github-sync-${syncType}`);
+  } catch (error) {
+    console.error("Failed to log sync activity:", error);
+  }
+}
+
 async function fetchIssueByNumber(
   owner: string,
   repo: string,
@@ -301,6 +320,16 @@ export const GET = withErrorHandling(
         "UPDATE projects SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?",
       ).run(projectId);
 
+      // Log the sync activity
+      if (created > 0 || updated > 0) {
+        logSyncActivity(
+          db,
+          projectId,
+          "auto",
+          `GitHub sync completed: ${created} created, ${updated} updated from ${owner}/${repo}`,
+        );
+      }
+
       await releaseDb(db);
 
       return NextResponse.json({
@@ -498,6 +527,16 @@ export const POST = withErrorHandling(
       db.prepare(
         "UPDATE projects SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?",
       ).run(projectId);
+
+      // Log the sync activity
+      if (created > 0 || updated > 0) {
+        logSyncActivity(
+          db,
+          projectId,
+          "manual",
+          `GitHub import completed: ${created} created, ${updated} updated from ${owner}/${repo}`,
+        );
+      }
 
       await releaseDb(db);
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TasksClient } from "@/app/(dashboard)/tasks/tasks-client";
+import { ActivityFeed } from "@/components/ui/activity-feed";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -174,6 +175,9 @@ export default function ProjectDetailClient({
   const [issueSortOrder, setIssueSortOrder] = useState<"newest" | "oldest">(
     "newest",
   );
+
+  // View tabs state
+  const [activeTab, setActiveTab] = useState<"tasks" | "activity">("tasks");
 
   const project = projectData?.project;
   const tasks = initialTasks;
@@ -820,13 +824,49 @@ export default function ProjectDetailClient({
         </Button>
       </div>
 
-      {/* Task Board - using shared TasksClient */}
+      {/* View Tabs */}
+      <div className="flex items-center gap-1 mb-4 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab("tasks")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+            activeTab === "tasks"
+              ? "text-foreground border-primary"
+              : "text-muted-foreground border-transparent hover:text-foreground"
+          )}
+        >
+          Tasks
+          <span className="ml-2 text-xs text-muted-foreground">
+            ({tasks.length})
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("activity")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+            activeTab === "activity"
+              ? "text-foreground border-primary"
+              : "text-muted-foreground border-transparent hover:text-foreground"
+          )}
+        >
+          Activity
+        </button>
+      </div>
+
+      {/* Tab Content */}
       <div className="flex-1 min-h-0">
-        <TasksClient
-          initialTasks={initialTasks}
-          projectId={projectId}
-          hideProjectFilter={true}
-        />
+        {activeTab === "tasks" && (
+          <TasksClient
+            initialTasks={initialTasks}
+            projectId={projectId}
+            hideProjectFilter={true}
+          />
+        )}
+        {activeTab === "activity" && (
+          <ActivityFeed projectId={projectId} className="h-full" />
+        )}
       </div>
 
       {/* GitHub Issue Import Dialog */}

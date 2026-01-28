@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import useSWR from "swr";
 import {
+  LayoutDashboard,
   LayoutList,
   Folder,
   Settings2,
@@ -26,6 +27,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: LayoutList },
   { href: "/projects", label: "Projects", icon: Folder },
   { href: "/status", label: "Status", icon: Settings2 },
