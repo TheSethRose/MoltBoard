@@ -80,13 +80,15 @@ export function WorkNotes({
     useState<ClosureSummaryResponse | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevNotesLengthRef = useRef(notes.length);
 
-  // Auto-scroll to bottom when new notes are added
+  // Auto-scroll to bottom only when new notes are added, not on every render
   useEffect(() => {
-    if (scrollRef.current) {
+    if (notes.length > prevNotesLengthRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [notes]);
+    prevNotesLengthRef.current = notes.length;
+  }, [notes.length]);
 
   const handleSubmit = async () => {
     if (!newNote.trim() || isSubmitting) return;
