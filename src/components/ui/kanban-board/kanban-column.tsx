@@ -95,16 +95,16 @@ export function KanbanColumn({
             <button
               onClick={onDeselectColumn}
               className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
-              aria-label={`Deselect all in ${column.title}`}
+              aria-label={`Select all in ${column.title}`}
             >
-              <CheckSquare size={14} />
+              <Square size={14} />
             </button>
             <button
               onClick={onSelectColumn}
               className="p-1.5 min-h-[28px] min-w-[28px] rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-action-manipulation"
-              aria-label={`Select all in ${column.title}`}
+              aria-label={`Deselect all in ${column.title}`}
             >
-              <Square size={14} />
+              <CheckSquare size={14} />
             </button>
           </div>
           <div
