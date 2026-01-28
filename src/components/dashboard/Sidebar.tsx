@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { RecentItems } from "@/components/ui/recent-items";
+import { KeyboardShortcutsDialog } from "@/app/(dashboard)/tasks/KeyboardShortcutsDialog";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 
@@ -81,6 +82,7 @@ export function Sidebar({ children }: SidebarProps) {
   );
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const { pinnedIds } = usePinnedProjects();
 
   // Fetch projects to get names for pinned projects
@@ -236,7 +238,20 @@ export function Sidebar({ children }: SidebarProps) {
       </main>
 
       {/* Command Palette */}
-      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onOpenShortcuts={() => {
+          setCommandPaletteOpen(false);
+          setShortcutsDialogOpen(true);
+        }}
+      />
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        open={shortcutsDialogOpen}
+        onOpenChange={setShortcutsDialogOpen}
+      />
 
       {/* Command Palette Trigger Button */}
       <button

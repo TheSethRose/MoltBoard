@@ -29,9 +29,15 @@ interface CommandItem {
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Callback to open the keyboard shortcuts help dialog */
+  onOpenShortcuts?: () => void;
 }
 
-export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+  onOpenShortcuts,
+}: CommandPaletteProps) {
   const [query, setQuery] = React.useState("");
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -95,6 +101,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           title: "Create new project",
           subtitle: "Set up a new project",
           icon: <Folder size={16} className="text-muted-foreground" />,
+        },
+        {
+          id: "action-shortcuts",
+          type: "action",
+          title: "Keyboard Shortcuts",
+          subtitle: "View all keyboard shortcuts",
+          icon: <Keyboard size={16} className="text-muted-foreground" />,
+          action: onOpenShortcuts,
         },
       ];
 
