@@ -34,7 +34,7 @@ function Progress({
         : "Normal";
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div data-slot="progress" className="flex flex-col gap-1 w-full">
       <div
         className={cn(
           "relative h-2 w-full overflow-hidden rounded-full bg-muted",

@@ -6,6 +6,7 @@ const Skeleton = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
+    data-slot="skeleton"
     ref={ref}
     className={cn("animate-pulse rounded-md bg-muted", className)}
     {...props}
