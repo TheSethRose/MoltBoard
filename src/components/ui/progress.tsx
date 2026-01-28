@@ -36,6 +36,11 @@ function Progress({
   return (
     <div data-slot="progress" className="flex flex-col gap-1 w-full">
       <div
+        role="progressbar"
+        aria-valuenow={Math.round(percentage)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${colorLabel}: ${Math.round(percentage)}%`}
         className={cn(
           "relative h-2 w-full overflow-hidden rounded-full bg-muted",
           className,
