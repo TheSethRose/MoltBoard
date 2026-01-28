@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useCallback, useState, useEffect } from "react";
+import { useSyncExternalStore, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -56,14 +56,13 @@ function useLocalStorage(
 
 export function Sidebar({ children }: SidebarProps) {
   const pathname = usePathname();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { setTheme, resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);

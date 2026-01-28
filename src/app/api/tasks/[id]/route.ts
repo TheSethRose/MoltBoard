@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, releaseDb } from "@/lib/db";
-import { DbTask, parseDbTask, WorkNote } from "@/types/task";
+import { DbTask, parseDbTask } from "@/types/task";
 import { isValidTaskStatus } from "@/lib/task-statuses";
 import {
   appendWorkNote,
   mergeWorkNotes,
-  normalizeWorkNote,
   normalizeWorkNotes,
   type RawWorkNote,
 } from "@/lib/work-notes";

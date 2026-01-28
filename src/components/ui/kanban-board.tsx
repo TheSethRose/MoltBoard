@@ -4,15 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { formatStatusLabel } from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
-import {
-  Plus,
-  AlertCircle,
-  ArrowUp,
-  Minus,
-  ArrowDown,
-  Square,
-  CheckSquare,
-} from "lucide-react";
+import { AlertCircle, ArrowUp, Minus, ArrowDown } from "lucide-react";
 import { FilterBar, type KanbanProject as FilterKanbanProject } from "./kanban-board/filter-bar";
 import { KanbanColumn } from "./kanban-board/kanban-column";
 export type KanbanProject = FilterKanbanProject;

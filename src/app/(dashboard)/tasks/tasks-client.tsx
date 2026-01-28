@@ -27,7 +27,6 @@ import {
   Link2,
   Tag,
   Type,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -383,7 +382,7 @@ function TaskModal({
   React.useEffect(() => {
     if (!open || !task) return;
     setWorkNotes(task.work_notes || []);
-  }, [open, task?.id, task?.work_notes]);
+  }, [open, task]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1185,7 +1184,7 @@ export function TasksClient({
     if (updatedTask && updatedTask !== editingTask) {
       setEditingTask(updatedTask);
     }
-  }, [tasks, editingTask?.id]);
+  }, [tasks, editingTask]);
 
   // Filter tasks by project if selected
   const filteredTasks = useMemo(() => {

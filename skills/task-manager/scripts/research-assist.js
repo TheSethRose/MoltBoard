@@ -118,38 +118,6 @@ Please provide:
 Format response as JSON with keys: description, acceptance_criteria (array), approach, dependencies, suggested_priority, missing_info (array)`;
 }
 
-// Helper: Generate closure summary prompt
-function generateClosureSummaryPrompt(task, workNotes, repoState) {
-  const recentWorkNotes = workNotes.slice(-20).map((note) => ({
-    author: note.author,
-    content: note.content,
-    timestamp: note.timestamp,
-  }));
-
-  return `Generate a closure summary for this completed task.
-
-Constraints:
-- Read-only: no code changes, no file writes, no git actions, no network writes.
-- Use only the provided task details and work notes.
-- Do not fabricate or use placeholder content.
-
-Task #${task.task_number}: ${task.text}
-Description: ${task.description || "(none)"}
-Git Changes: ${repoState.hasChanges ? "Yes - uncommitted changes" : "No"}
-Commits Behind Origin: ${repoState.behind}
-
-Recent Work Notes:
-${recentWorkNotes.map((n) => `- [${n.author}] ${n.content}`).join("\n")}
-
-Please provide:
-1. Executive summary of what was accomplished (2-3 sentences)
-2. Key changes made (files modified, features added)
-3. Lessons learned or notes for future work
-4. Any follow-up recommendations
-
-Format response as JSON with keys: executive_summary, key_changes (array), lessons_learned (array), follow_up (array), missing_info (array)`;
-}
-
 function extractJson(output) {
   if (!output || typeof output !== "string") return null;
   const start = output.indexOf("{");
