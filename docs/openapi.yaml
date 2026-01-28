@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: MoltBoard API
+  description: Task management and project tracking API
+  version: "1.0.0"
+  contact:
+    name: API Support
+    url: https://github.com/TheSethRose/MoltBoard
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://moltboard.example.com
+    description: Production server
+
+tags:
+  - name: Tasks
+    description: Task management endpoints
+  - name: Projects
+    description: Project management endpoints
+  - name: Status
+    description: System status and health endpoints
+  - name: Metrics
+    description: Usage metrics endpoints
+  - name: Clawdbot
+    description: Clawdbot research assistant endpoints
+
+paths:
+  /api/tasks:
+    get:
+      tags:
+        - Tasks
+      summary: List all tasks
+      description: Returns a list of tasks with optional filtering
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+          description: Filter tasks by project ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [backlog, ready, in_progress, pending, completed, blocked]
+          description: Filter tasks by status
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [urgent, high, medium, low]
+          description: Filter tasks by priority
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Task"
+                  total:
+                    type: integer
+    post:
+      tags:
+        - Tasks
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Task ID
+    get:
+      tags:
+        - Tasks
+      summary: Get a single task
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Task not found
+    put:
+      tags:
+        - Tasks
+      summary: Update a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+      responses:
+        "200":
+          description: Task updated successfully
+        "404":
+          description: Task not found
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      responses:
+        "204":
+          description: Task deleted successfully
+        "404":
+          description: Task not found
+
+  /api/projects:
+    get:
+      tags:
+        - Projects
+      summary: List all projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Project"
+    post:
+      tags:
+        - Projects
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: Project created successfully
+
+  /api/projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Project ID
+    get:
+      tags:
+        - Projects
+      summary: Get project details
+      responses:
+        "200":
+          description: Project details
+    put:
+      tags:
+        - Projects
+      summary: Update project
+      responses:
+        "200":
+          description: Project updated
+    delete:
+      tags:
+        - Projects
+      summary: Delete project
+      responses:
+        "204":
+          description: Project deleted
+
+  /api/projects/{id}/sync:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Project ID
+    post:
+      tags:
+        - Projects
+      summary: Sync project with GitHub
+      responses:
+        "200":
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  synced:
+                    type: integer
+                  failed:
+                    type: integer
+
+  /api/projects/{id}/github-issues:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Project ID
+    get:
+      tags:
+        - Projects
+      summary: List GitHub issues for project
+      responses:
+        "200":
+          description: List of GitHub issues
+
+  /api/status:
+    get:
+      tags:
+        - Status
+      summary: Get system status
+      responses:
+        "200":
+          description: System status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      byStatus:
+                        type: object
+                  health:
+                    type: object
+                  session:
+                    type: object
+                  tokenUsage:
+                    type: object
+
+  /api/status/database:
+    get:
+      tags:
+        - Status
+      summary: Get database status
+      responses:
+        "200":
+          description: Database health status
+
+  /api/status/uptime:
+    get:
+      tags:
+        - Status
+      summary: Get uptime information
+      responses:
+        "200":
+          description: Uptime statistics
+
+  /api/status/git:
+    get:
+      tags:
+        - Status
+      summary: Get git repository status
+      responses:
+        "200":
+          description: Git status information
+
+  /api/metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Get usage metrics
+      responses:
+        "200":
+          description: Usage metrics data
+
+  /api/clawdbot/research:
+    post:
+      tags:
+        - Clawdbot
+      summary: Research assistant for task forms and closure summaries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [task-form, closure-summary]
+                input:
+                  type: string
+                notes:
+                  type: string
+              required:
+                - type
+                - input
+      responses:
+        "200":
+          description: Research response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/TaskFormResponse"
+                  - $ref: "#/components/schemas/ClosureSummaryResponse"
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        task_number:
+          type: integer
+        text:
+          type: string
+        status:
+          type: string
+          enum: [backlog, ready, in_progress, pending, completed, blocked]
+        priority:
+          type: string
+          enum: [urgent, high, medium, low]
+        tags:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+        notes:
+          type: string
+        blocked_by:
+          type: array
+          items:
+            type: integer
+
+    CreateTaskRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+        status:
+          type: string
+          enum: [backlog, ready]
+        priority:
+          type: string
+          enum: [urgent, high, medium, low]
+        tags:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        status:
+          type: string
+          enum: [backlog, ready, in_progress, pending, completed, blocked]
+        priority:
+          type: string
+          enum: [urgent, high, medium, low]
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        description:
+          type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        github_repo_url:
+          type: string
+        local_path:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        github_repo_url:
+          type: string
+        local_path:
+          type: string
+
+    TaskFormResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          const: task-form
+        response:
+          type: object
+          properties:
+            title:
+              type: string
+            goal:
+              type: string
+            scope:
+              type: string
+            outOfScope:
+              type: array
+              items:
+                type: string
+            dependencies:
+              type: array
+              items:
+                type: string
+            acceptanceCriteria:
+              type: array
+              items:
+                type: string
+            tags:
+              type: array
+              items:
+                type: string
+            priority:
+              type: string
+              enum: [urgent, high, medium, low]
+
+    ClosureSummaryResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          const: closure-summary
+        response:
+          type: object
+          properties:
+            summary:
+              type: string
+            keyChanges:
+              type: array
+              items:
+                type: string
+            notesForRecord:
+              type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
