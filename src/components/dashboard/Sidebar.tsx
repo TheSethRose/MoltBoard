@@ -19,6 +19,7 @@ import {
   Pin,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { RecentItems } from "@/components/ui/recent-items";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 
@@ -162,6 +163,11 @@ export function Sidebar({ children }: SidebarProps) {
                 })}
               </div>
             </div>
+          )}
+
+          {/* Recent Items */}
+          {!collapsed && (
+            <RecentItems maxItems={5} />
           )}
 
           {/* Main Navigation Items */}

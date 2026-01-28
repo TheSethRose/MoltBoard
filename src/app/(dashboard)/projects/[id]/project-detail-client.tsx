@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TasksClient } from "@/app/(dashboard)/tasks/tasks-client";
 import { ActivityFeed } from "@/components/ui/activity-feed";
+import { RecentItemTracker } from "@/components/ui/recent-item-tracker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -662,6 +663,9 @@ export default function ProjectDetailClient({
 
   return (
     <div className="h-full flex flex-col">
+      {/* Track this project as recently viewed */}
+      {project && <RecentItemTracker id={project.id} name={project.name} type="project" />}
+
       {/* Header */}
       <header className="mb-6">
         {/* Back Navigation */}
