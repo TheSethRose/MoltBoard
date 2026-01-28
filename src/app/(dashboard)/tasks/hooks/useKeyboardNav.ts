@@ -33,6 +33,7 @@ interface UseKeyboardNavOptions {
   deleteTask: (id: number) => void;
   setTaskToDelete: (id: number | null) => void;
   setDeleteConfirmOpen: (open: boolean) => void;
+  openShortcutsHelp: () => void;
 }
 
 export function useKeyboardNav({
@@ -47,6 +48,7 @@ export function useKeyboardNav({
   deleteTask,
   setTaskToDelete,
   setDeleteConfirmOpen,
+  openShortcutsHelp,
 }: UseKeyboardNavOptions): void {
   const getAllTasks = useCallback(() => columns, [columns]);
 
@@ -64,6 +66,25 @@ export function useKeyboardNav({
       const totalColumns = cols.length;
       const current = selectedTaskIndex;
       const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      // Keyboard shortcuts help - works even without a selection
+      if (e.key === "?" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        openShortcutsHelp();
+        return;
+      }
+
+      // Ctrl/Cmd + / for keyboard shortcuts help
+      if (
+        isCtrlOrMeta &&
+        e.key === "/" &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        openShortcutsHelp();
+        return;
+      }
 
       switch (e.key) {
         case "n":
@@ -250,5 +271,6 @@ export function useKeyboardNav({
     setSelectedTaskIndex,
     setTaskToDelete,
     setDeleteConfirmOpen,
+    openShortcutsHelp,
   ]);
 }

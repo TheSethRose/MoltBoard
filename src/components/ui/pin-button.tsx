@@ -29,18 +29,24 @@ export function PinButton({
     togglePin(projectId);
   };
 
-  if (pinned) {
+  const icon = pinned ? (
+    <Pin size={16} className="text-primary" />
+  ) : (
+    <PinOff size={16} />
+  );
+
+  if (showLabel) {
     return (
       <Button
-        variant={variant}
-        size={size}
+        variant="outline"
+        size="sm"
         onClick={handleClick}
         className={className}
-        aria-label={`Unpin ${projectName}`}
-        title={`Unpin ${projectName}`}
+        aria-label={pinned ? `Unpin ${projectName}` : `Pin ${projectName}`}
+        title={pinned ? `Unpin ${projectName}` : `Pin ${projectName}`}
       >
-        <Pin size={16} className="text-primary" />
-        {showLabel && <span className="ml-2">Pinned</span>}
+        {icon}
+        <span className="ml-2">{pinned ? "Pinned" : "Pin"}</span>
       </Button>
     );
   }
@@ -51,11 +57,10 @@ export function PinButton({
       size={size}
       onClick={handleClick}
       className={className}
-      aria-label={`Pin ${projectName}`}
-      title={`Pin ${projectName}`}
+      aria-label={pinned ? `Unpin ${projectName}` : `Pin ${projectName}`}
+      title={pinned ? `Unpin ${projectName}` : `Pin ${projectName}`}
     >
-      <PinOff size={16} />
-      {showLabel && <span className="ml-2">Pin</span>}
+      {icon}
     </Button>
   );
 }

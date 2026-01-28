@@ -50,11 +50,15 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  showCloseButton,
+  hideCloseButton,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  hideCloseButton?: boolean;
 }) {
+  const shouldShowCloseButton =
+    showCloseButton ?? (hideCloseButton !== undefined ? !hideCloseButton : true);
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -68,7 +72,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
+        {shouldShowCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
             className="ring-offset-background focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 min-h-[24px] min-w-[24px] flex items-center justify-center touch-action-manipulation"

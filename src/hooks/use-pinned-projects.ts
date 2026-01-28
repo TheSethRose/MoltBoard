@@ -3,12 +3,29 @@
 import { useSyncExternalStore, useCallback } from "react";
 
 const PINNED_PROJECTS_KEY = "moltboard-pinned-projects";
+const EMPTY_PINNED: number[] = [];
+let cachedPinnedRaw: string | null = null;
+let cachedPinnedProjects: number[] = EMPTY_PINNED;
 
 // Get initial value from localStorage
 function getPinnedProjects(): number[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_PINNED;
   const item = localStorage.getItem(PINNED_PROJECTS_KEY);
-  return item ? JSON.parse(item) : [];
+  if (item === cachedPinnedRaw) return cachedPinnedProjects;
+  cachedPinnedRaw = item;
+  if (!item) {
+    cachedPinnedProjects = EMPTY_PINNED;
+    return cachedPinnedProjects;
+  }
+  try {
+    const parsed = JSON.parse(item);
+    cachedPinnedProjects = Array.isArray(parsed)
+      ? parsed.map((value) => Number(value)).filter((id) => !Number.isNaN(id))
+      : EMPTY_PINNED;
+  } catch {
+    cachedPinnedProjects = EMPTY_PINNED;
+  }
+  return cachedPinnedProjects;
 }
 
 export function usePinnedProjects() {
@@ -21,7 +38,7 @@ export function usePinnedProjects() {
     return getPinnedProjects();
   }, []);
 
-  const getServerSnapshot = useCallback(() => [], []);
+  const getServerSnapshot = useCallback(() => EMPTY_PINNED, []);
 
   const pinnedIds = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 

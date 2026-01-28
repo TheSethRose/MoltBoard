@@ -10,6 +10,7 @@ import {
   formatStatusLabel,
 } from "@/lib/task-statuses";
 import { TaskModal } from "./TaskModal";
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useTaskMutations, useKeyboardNav } from "./hooks";
 import type { Task, Project } from "./types";
 
@@ -46,6 +47,7 @@ export function TasksClient({
   } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
 
   // SWR configuration with fallback data for hydration
   const swrConfig: SWRConfiguration = {
@@ -217,6 +219,10 @@ export function TasksClient({
     setAddModalOpen(true);
   }, []);
 
+  const openShortcutsHelp = useCallback(() => {
+    setShortcutsDialogOpen(true);
+  }, []);
+
   useEffect(() => {
     if (!editingTask) return;
     const updatedTask = tasks.find((t) => t.id === editingTask.id);
@@ -257,6 +263,7 @@ export function TasksClient({
     deleteTask,
     setTaskToDelete,
     setDeleteConfirmOpen,
+    openShortcutsHelp,
   });
 
   return (
@@ -333,6 +340,11 @@ export function TasksClient({
         cancelLabel="Cancel"
         onConfirm={handleConfirmedDelete}
         variant="destructive"
+      />
+
+      <KeyboardShortcutsDialog
+        open={shortcutsDialogOpen}
+        onOpenChange={setShortcutsDialogOpen}
       />
     </div>
   );
