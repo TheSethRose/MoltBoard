@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import useSWR, { type SWRConfiguration } from "swr";
 import { KanbanBoard } from "@/components/ui/kanban-board";
+import { TaskListView } from "@/components/ui/task-list-view";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   getTaskStatuses,
@@ -13,6 +14,9 @@ import { TaskModal } from "./TaskModal";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useTaskMutations, useKeyboardNav } from "./hooks";
 import type { Task, Project } from "./types";
+import { Button } from "@/components/ui/button";
+import { LayoutList, Kanban } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TASK_STATUSES = getTaskStatuses();
 const DEFAULT_TASK_STATUS = getDefaultTaskStatus(TASK_STATUSES);
@@ -48,6 +52,10 @@ export function TasksClient({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+
+  // View toggle state
+  type ViewMode = "kanban" | "list";
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
 
   // SWR configuration with fallback data for hydration
   const swrConfig: SWRConfiguration = {
@@ -268,56 +276,103 @@ export function TasksClient({
 
   return (
     <div className="h-full flex flex-col">
-      <KanbanBoard
-        columns={columns}
-        projects={hideProjectFilter ? undefined : projectsData?.projects}
-        projectFilter={projectFilter}
-        onProjectFilterChange={setProjectFilter}
-        onTaskMove={moveTask}
-        onTaskReorder={reorderTasks}
-        onTaskDelete={confirmDeleteTask}
-        onDeleteDirect={(id) => deleteTask(id)}
-        onTaskEdit={openEditModal}
-        onAddClick={openAddModal}
-        onQuickAdd={(text) => quickAdd(text, DEFAULT_TASK_STATUS as Task["status"])}
-        selectedTaskId={
-          selectedTaskIndex
-            ? columns[selectedTaskIndex.column].tasks[selectedTaskIndex.index]
-                ?.id
-            : null
-        }
-        onTaskSelect={(taskId) => {
-          const cols = getAllTasks();
-          for (let c = 0; c < cols.length; c++) {
-            const idx = cols[c].tasks.findIndex((t) => t.id === taskId);
-            if (idx !== -1) {
-              setSelectedTaskIndex({ column: c, index: idx });
-              break;
+      {/* View Toggle */}
+      <div className="flex items-center justify-end gap-2 p-4 border-b border-border">
+        <span className="text-sm text-muted-foreground mr-2">View:</span>
+        <Button
+          variant={viewMode === "kanban" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("kanban")}
+          className="gap-1"
+        >
+          <Kanban size={14} />
+          Kanban
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("list")}
+          className="gap-1"
+        >
+          <LayoutList size={14} />
+          List
+        </Button>
+      </div>
+
+      {/* Kanban View */}
+      {viewMode === "kanban" && (
+        <KanbanBoard
+          columns={columns}
+          projects={hideProjectFilter ? undefined : projectsData?.projects}
+          projectFilter={projectFilter}
+          onProjectFilterChange={setProjectFilter}
+          onTaskMove={moveTask}
+          onTaskReorder={reorderTasks}
+          onTaskDelete={confirmDeleteTask}
+          onDeleteDirect={(id) => deleteTask(id)}
+          onTaskEdit={openEditModal}
+          onAddClick={openAddModal}
+          onQuickAdd={(text) => quickAdd(text, DEFAULT_TASK_STATUS as Task["status"])}
+          selectedTaskId={
+            selectedTaskIndex
+              ? columns[selectedTaskIndex.column].tasks[selectedTaskIndex.index]
+                  ?.id
+              : null
+          }
+          onTaskSelect={(taskId) => {
+            const cols = getAllTasks();
+            for (let c = 0; c < cols.length; c++) {
+              const idx = cols[c].tasks.findIndex((t) => t.id === taskId);
+              if (idx !== -1) {
+                setSelectedTaskIndex({ column: c, index: idx });
+                break;
+              }
             }
-          }
-        }}
-        selectedTaskIds={selectedTaskIds}
-        onTaskToggleSelect={toggleSelectTask}
-        onSelectColumn={selectColumnTasks}
-        onDeselectColumn={deselectColumnTasks}
-        onBulkMove={async (toStatus) => {
-          for (const taskId of selectedTaskIds) {
-            const task = tasks.find((t) => t.id === taskId);
-            if (task) {
-              await moveTask(taskId, task.status, toStatus);
+          }}
+          selectedTaskIds={selectedTaskIds}
+          onTaskToggleSelect={toggleSelectTask}
+          onSelectColumn={selectColumnTasks}
+          onDeselectColumn={deselectColumnTasks}
+          onBulkMove={async (toStatus) => {
+            for (const taskId of selectedTaskIds) {
+              const task = tasks.find((t) => t.id === taskId);
+              if (task) {
+                await moveTask(taskId, task.status, toStatus);
+              }
             }
-          }
-          setSelectedTaskIds(new Set());
-        }}
-        onBulkDelete={async () => {
-          const idsToDelete = Array.from(selectedTaskIds);
-          for (const taskId of idsToDelete) {
-            await deleteTask(taskId);
-          }
-          setSelectedTaskIds(new Set());
-        }}
-        className="flex-1 min-h-0 flex flex-col"
-      />
+            setSelectedTaskIds(new Set());
+          }}
+          onBulkDelete={async () => {
+            const idsToDelete = Array.from(selectedTaskIds);
+            for (const taskId of idsToDelete) {
+              await deleteTask(taskId);
+            }
+            setSelectedTaskIds(new Set());
+          }}
+          className="flex-1 min-h-0 flex flex-col"
+        />
+      )}
+
+      {/* List View */}
+      {viewMode === "list" && (
+        <TaskListView
+          tasks={filteredTasks}
+          projects={hideProjectFilter ? undefined : projectsData?.projects}
+          projectFilter={projectFilter}
+          onProjectFilterChange={setProjectFilter}
+          selectedTaskIds={selectedTaskIds}
+          onTaskToggleSelect={toggleSelectTask}
+          onSelectAll={() => {
+            filteredTasks.forEach((t) => setSelectedTaskIds((prev) => new Set([...prev, t.id])));
+          }}
+          onDeselectAll={() => {
+            setSelectedTaskIds(new Set());
+          }}
+          onTaskEdit={openEditModal}
+          onTaskDelete={confirmDeleteTask}
+          className="flex-1 min-h-0 flex flex-col"
+        />
+      )}
 
       <TaskModal
         open={addModalOpen}
