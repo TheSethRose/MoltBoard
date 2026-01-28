@@ -57,10 +57,10 @@ function Progress({
         <span
           className={cn(
             percentage >= 90
-              ? "text-red-400"
+              ? "text-red-300"
               : percentage >= 70
-                ? "text-yellow-400"
-                : "text-green-400",
+                ? "text-amber-300"
+                : "text-green-300",
           )}
         >
           {colorLabel}
