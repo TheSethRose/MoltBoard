@@ -164,6 +164,8 @@ export function WorkNotes({
         "flex flex-col border border-border rounded-lg bg-card",
         className,
       )}
+      role="region"
+      aria-label="Activity log"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
@@ -225,7 +227,14 @@ export function WorkNotes({
       )}
 
       {/* Notes Feed */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label="Activity log entries"
+      >
         {notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center px-4">
             <div className="p-3 rounded-full bg-muted/50 mb-3">
