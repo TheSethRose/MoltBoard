@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectDeleteDialog } from "@/components/ui/project-delete-dialog";
+import { PinButton } from "@/components/ui/pin-button";
 import { Clock, Trash2, Github, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -863,11 +864,14 @@ export default function ProjectsClient() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Link href={`/projects/${project.id}`} className="min-h-[24px]">
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link href={`/projects/${project.id}`} className="min-h-[24px]">
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                  </Link>
+                  <PinButton projectId={project.id} projectName={project.name} />
+                </div>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"

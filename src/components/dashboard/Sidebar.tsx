@@ -4,6 +4,7 @@ import { useSyncExternalStore, useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+import useSWR from "swr";
 import {
   LayoutList,
   Folder,
@@ -14,9 +15,11 @@ import {
   Moon,
   Search,
   Command,
+  Pin,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 
 interface SidebarProps {
   children: React.ReactNode;
@@ -27,6 +30,13 @@ const navItems = [
   { href: "/projects", label: "Projects", icon: Folder },
   { href: "/status", label: "Status", icon: Settings2 },
 ];
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+interface Project {
+  id: number;
+  name: string;
+}
 
 // Custom hook for localStorage with SSR support
 function useLocalStorage(
@@ -68,6 +78,19 @@ export function Sidebar({ children }: SidebarProps) {
   );
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const { pinnedIds } = usePinnedProjects();
+
+  // Fetch projects to get names for pinned projects
+  const { data: projectsData } = useSWR<{ projects: Project[] }>(
+    "/api/projects",
+    fetcher,
+    { fallbackData: { projects: [] } },
+  );
+
+  // Get pinned projects with their full details
+  const pinnedProjects = (projectsData?.projects || []).filter((p) =>
+    pinnedIds.includes(p.id),
+  );
 
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
@@ -94,6 +117,11 @@ export function Sidebar({ children }: SidebarProps) {
           {!collapsed && (
             <h1 className="font-bold text-card-foreground">MoltBoard</h1>
           )}
+          {collapsed && pinnedProjects.length > 0 && (
+            <div className="flex items-center justify-center w-full">
+              <Pin size={14} className="text-primary" aria-label={`${pinnedProjects.length} pinned projects`} />
+            </div>
+          )}
           <button
             onClick={toggleCollapsed}
             className="p-2 min-h-[36px] min-w-[36px] rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 touch-action-manipulation"
@@ -104,7 +132,37 @@ export function Sidebar({ children }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1" aria-label="Main navigation">
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto" aria-label="Main navigation">
+          {/* Pinned Projects */}
+          {pinnedProjects.length > 0 && !collapsed && (
+            <div className="mb-4">
+              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Pinned
+              </p>
+              <div className="space-y-1">
+                {pinnedProjects.map((project) => {
+                  const isActive = pathname === `/projects/${project.id}`;
+                  return (
+                    <Link
+                      key={project.id}
+                      href={`/projects/${project.id}`}
+                      className={`flex items-center gap-3 px-3 py-2 min-h-[40px] rounded-md transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <Pin size={16} className="text-primary" aria-hidden="true" />
+                      <span className="truncate">{project.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Main Navigation Items */}
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);

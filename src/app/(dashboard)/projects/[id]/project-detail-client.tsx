@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectDeleteDialog } from "@/components/ui/project-delete-dialog";
+import { PinButton } from "@/components/ui/pin-button";
 import {
   ArrowLeft,
   Github,
@@ -800,6 +801,7 @@ export default function ProjectDetailClient({
               Pull Latest
             </Button>
           )}
+        {project && <PinButton projectId={project.id} projectName={project.name} showLabel />}
         <Button
           variant="outline"
           size="sm"
