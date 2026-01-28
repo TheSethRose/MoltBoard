@@ -2,9 +2,21 @@
 
 import { useState, useRef, useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { Send, Bot, User, Clock, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  Send,
+  Bot,
+  User,
+  Clock,
+  Loader2,
+  Sparkles,
+  CheckCircle2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ResearchButton, ClosureSummaryResult, type ClosureSummaryResponse } from "./research-button";
+import {
+  ResearchButton,
+  ClosureSummaryResult,
+  type ClosureSummaryResponse,
+} from "./research-button";
 
 interface WorkNote {
   id: string;
@@ -64,7 +76,8 @@ export function WorkNotes({
   const [newNote, setNewNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showClosureSummary, setShowClosureSummary] = useState(false);
-  const [closureResult, setClosureResult] = useState<ClosureSummaryResponse | null>(null);
+  const [closureResult, setClosureResult] =
+    useState<ClosureSummaryResponse | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,13 +108,13 @@ export function WorkNotes({
 
   const handleSaveClosureSummary = async () => {
     if (!closureResult || !onClosureSummarySave) return;
-    
+
     const summaryText = `## Closure Summary\n\n${closureResult.summary}\n\n${
       closureResult.keyChanges.length > 0
-        ? `### Key Changes\n${closureResult.keyChanges.map((c: string) => `- ${c}`).join('\n')}\n\n`
+        ? `### Key Changes\n${closureResult.keyChanges.map((c: string) => `- ${c}`).join("\n")}\n\n`
         : ""
     }${closureResult.notesForRecord ? `### Notes\n${closureResult.notesForRecord}` : ""}`;
-    
+
     await onClosureSummarySave(summaryText);
     setShowClosureSummary(false);
   };
@@ -200,7 +213,7 @@ export function WorkNotes({
               <ResearchButton
                 mode="closure-summary"
                 input={taskTitle}
-                notes={notes.map(n => n.content).join("\n\n")}
+                notes={notes.map((n) => n.content).join("\n\n")}
                 onClosureComplete={handleClosureComplete}
                 className="w-full justify-center"
               />
@@ -275,8 +288,12 @@ export function WorkNotes({
 
       {/* New Note Input */}
       <div className="border-t border-border p-3">
+        <label htmlFor="work-note-input" className="sr-only">
+          Add a note
+        </label>
         <div className="border border-input bg-background rounded-2xl p-2 shadow-xs">
           <TextareaAutosize
+            id="work-note-input"
             ref={textareaRef}
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
@@ -287,12 +304,20 @@ export function WorkNotes({
               }
             }}
             placeholder="Add a note…"
+            aria-describedby="work-note-hint"
             disabled={disabled || isSubmitting}
             minRows={2}
             maxRows={6}
             className="w-full resize-none border-none bg-transparent px-2 py-1 text-base md:text-sm text-foreground placeholder:text-muted-foreground shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-50"
           />
-          <div className="flex items-center justify-end pt-2">
+          <div className="flex items-center justify-between pt-2">
+            <span
+              id="work-note-hint"
+              className="text-xs text-muted-foreground px-2"
+            >
+              Press {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}
+              +Enter to send
+            </span>
             <button
               type="button"
               onClick={handleSubmit}
