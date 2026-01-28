@@ -135,7 +135,9 @@ export function FilterBar({
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
-        <span className="text-xs text-muted-foreground font-medium">Filter:</span>
+        <span className="text-xs text-muted-foreground font-medium">
+          Filter:
+        </span>
 
         <div className="flex gap-1">
           <button

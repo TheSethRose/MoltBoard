@@ -6,20 +6,19 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   ariaLabel?: string;
 }
 
-const Skeleton = React.forwardRef<
-  HTMLDivElement,
-  SkeletonProps
->(({ className, ariaLabel = "Loading...", ...props }, ref) => (
-  <div
-    ref={ref}
-    data-slot="skeleton"
-    role="status"
-    aria-busy="true"
-    aria-label={ariaLabel}
-    className={cn("animate-pulse rounded-md bg-muted", className)}
-    {...props}
-  />
-));
+const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
+  ({ className, ariaLabel = "Loading...", ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="skeleton"
+      role="status"
+      aria-busy="true"
+      aria-label={ariaLabel}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
+      {...props}
+    />
+  ),
+);
 Skeleton.displayName = "Skeleton";
 
 export { Skeleton };

@@ -2,7 +2,10 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { KanbanTask, KanbanColumn as KanbanColumnType } from "../kanban-board";
+import type {
+  KanbanTask,
+  KanbanColumn as KanbanColumnType,
+} from "../kanban-board";
 import { TaskCard } from "./task-card";
 import { CheckSquare, Square, Plus } from "lucide-react";
 
@@ -104,7 +107,10 @@ export function KanbanColumn({
               <CheckSquare size={14} />
             </button>
           </div>
-          <div className={cn("h-2 w-2 rounded", config.dot)} aria-hidden="true" />
+          <div
+            className={cn("h-2 w-2 rounded", config.dot)}
+            aria-hidden="true"
+          />
           <h2 className="text-xs font-[600] text-foreground">
             {column.title} ({tasks.length}/{column.tasks.length})
           </h2>

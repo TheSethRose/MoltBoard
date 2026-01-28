@@ -138,9 +138,7 @@ export function TaskCard({
       {task.blocked_by && task.blocked_by.length > 0 && (
         <div className="flex items-center gap-1 mt-2 text-[10px] text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5">
           <span className="font-medium">Blocked by:</span>
-          <span>
-            {task.blocked_by.map((n: number) => `#${n}`).join(", ")}
-          </span>
+          <span>{task.blocked_by.map((n: number) => `#${n}`).join(", ")}</span>
         </div>
       )}
     </div>
