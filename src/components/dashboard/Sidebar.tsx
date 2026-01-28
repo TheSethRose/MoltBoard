@@ -94,7 +94,7 @@ export function Sidebar({ children }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1">
+        <nav className="flex-1 p-2 space-y-1" aria-label="Main navigation">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
