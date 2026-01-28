@@ -17,10 +17,6 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           error && "border-destructive",
           className,
         )}
-        style={{
-          backgroundColor: "var(--background)",
-          color: "var(--foreground)",
-        }}
         ref={ref}
         {...props}
       >
