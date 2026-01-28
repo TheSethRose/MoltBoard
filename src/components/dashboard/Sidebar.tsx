@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useCallback } from "react";
+import { useSyncExternalStore, useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -12,7 +12,11 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Search,
+  Command,
 } from "lucide-react";
+import { CommandPalette } from "@/components/ui/command-palette";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 
 interface SidebarProps {
   children: React.ReactNode;
@@ -63,6 +67,7 @@ export function Sidebar({ children }: SidebarProps) {
     () => false,
   );
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
@@ -71,6 +76,12 @@ export function Sidebar({ children }: SidebarProps) {
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
+
+  // Keyboard shortcut for command palette
+  useKeyboardShortcut({
+    onTrigger: () => setCommandPaletteOpen(true),
+    enabled: mounted,
+  });
 
   return (
     <div className="min-h-screen flex">
@@ -157,6 +168,23 @@ export function Sidebar({ children }: SidebarProps) {
       <main className="flex-1 overflow-hidden flex flex-col p-4">
         {children}
       </main>
+
+      {/* Command Palette */}
+      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+
+      {/* Command Palette Trigger Button */}
+      <button
+        onClick={() => setCommandPaletteOpen(true)}
+        className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring z-40"
+        aria-label="Open command palette (Cmd+K)"
+      >
+        <Search size={16} />
+        <span className="hidden sm:inline">Search</span>
+        <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+          <Command size={10} />
+          K
+        </kbd>
+      </button>
     </div>
   );
 }
