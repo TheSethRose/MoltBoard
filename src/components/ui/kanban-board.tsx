@@ -5,35 +5,18 @@ import { cn } from "@/lib/utils";
 import { formatStatusLabel } from "@/lib/task-statuses";
 import type { TaskStatus } from "@/types/task";
 import { AlertCircle, ArrowUp, Minus, ArrowDown } from "lucide-react";
-import {
-  FilterBar,
-  type KanbanProject as FilterKanbanProject,
-} from "./kanban-board/filter-bar";
+import { FilterBar } from "./kanban-board/filter-bar";
 import { KanbanColumn } from "./kanban-board/kanban-column";
-export type KanbanProject = FilterKanbanProject;
+import type {
+  KanbanTask,
+  KanbanColumn as KanbanColumnType,
+  KanbanProject,
+} from "./kanban-board/types";
 
-export interface KanbanTask {
-  id: number;
-  task_number: number;
-  text: string;
-  status: TaskStatus;
-  tags?: string[];
-  priority?: "urgent" | "high" | "medium" | "low" | null;
-  order?: number;
-  createdAt?: string;
-  notes?: string;
-  blocked_by?: number[];
-  project_id?: number | null;
-}
-
-export interface KanbanColumn {
-  id: TaskStatus;
-  title: string;
-  tasks: KanbanTask[];
-}
+export type { KanbanTask, KanbanColumn, KanbanProject } from "./kanban-board/types";
 
 export interface KanbanBoardProps {
-  columns: KanbanColumn[];
+  columns: KanbanColumnType[];
   tagColors?: Record<string, string>;
   priorityColors?: Record<string, string>;
   projects?: KanbanProject[];
@@ -164,7 +147,7 @@ export function KanbanBoard({
   onBulkDelete = async () => {},
   className,
 }: KanbanBoardProps) {
-  const [columns, setColumns] = React.useState<KanbanColumn[]>(initialColumns);
+  const [columns, setColumns] = React.useState<KanbanColumnType[]>(initialColumns);
   const [tagFilter, setTagFilter] = React.useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState<string>("");

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { KanbanTask } from "../kanban-board";
+import type { KanbanTask } from "./types";
 import { DeleteButton } from "../delete-button";
 
 interface TaskCardProps {

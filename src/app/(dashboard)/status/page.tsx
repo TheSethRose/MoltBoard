@@ -30,6 +30,7 @@ interface SessionInfo {
 interface MemoryUsage {
   heapUsed: number;
   heapTotal: number;
+  heapLimit: number;
   rss: number;
   external: number;
 }
@@ -346,15 +347,18 @@ export default function StatusPage() {
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {formatBytes(data.memory.heapUsed)} /{" "}
-                  {formatBytes(data.memory.heapTotal)}
+                  {formatBytes(data.memory.heapLimit)}
                 </p>
               </div>
               <Progress
                 value={data.memory.heapUsed}
-                max={data.memory.heapTotal}
+                max={data.memory.heapLimit}
                 className="h-3"
               />
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  Heap Total: {formatBytes(data.memory.heapTotal)}
+                </span>
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>
                   RSS: {formatBytes(data.memory.rss)}
                 </span>

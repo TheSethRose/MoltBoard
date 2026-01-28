@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
+import v8 from "v8";
 import { getDb, releaseDb } from "@/lib/db";
 import { TaskSummary } from "@/types/task";
 import { getWorkspacePath } from "@/lib/workspace-path";
@@ -56,6 +57,7 @@ interface ProcessSessionInfo {
 interface MemoryUsage {
   heapUsed: number;
   heapTotal: number;
+  heapLimit: number;
   rss: number;
   external: number;
 }
@@ -248,10 +250,12 @@ function getProcessSessionInfo(): ProcessSessionInfo {
 
 function getMemoryUsage(): MemoryUsage {
   const mem = process.memoryUsage();
+  const heapStats = v8.getHeapStatistics();
 
   return {
     heapUsed: mem.heapUsed,
     heapTotal: mem.heapTotal,
+    heapLimit: heapStats.heap_size_limit,
     rss: mem.rss,
     external: mem.external,
   };

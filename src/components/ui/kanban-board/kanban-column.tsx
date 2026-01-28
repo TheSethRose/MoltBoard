@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type {
   KanbanTask,
   KanbanColumn as KanbanColumnType,
-} from "../kanban-board";
+} from "./types";
 import { TaskCard } from "./task-card";
 import { CheckSquare, Square, Plus } from "lucide-react";
 
