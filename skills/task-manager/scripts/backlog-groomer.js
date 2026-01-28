@@ -83,8 +83,9 @@ function markReady(taskId, summary, notesUpdate) {
 
   if (notesUpdate) {
     db.prepare(
-      "UPDATE tasks SET notes = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    ).run(notesUpdate, TASK_STATUS.ready, taskId);
+      "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).run(TASK_STATUS.ready, taskId);
+    appendWorkNote(db, taskId, `groom:notes: ${notesUpdate}`);
   } else {
     db.prepare(
       "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -176,7 +177,7 @@ console.log("2) Update notes if needed (include plan + definition).");
 console.log("3) Mark ready or blocked using one of the commands below.");
 console.log("\nCommands:");
 console.log(
-  `- Mark ready: node scripts/backlog-groomer.js --mark-ready ${nextTask.id} --summary "<summary>" --notes "<updated notes>"`,
+  `- Mark ready: node scripts/backlog-groomer.js --mark-ready ${nextTask.id} --summary "<summary>" --notes "<append notes>"`,
 );
 console.log(
   `- Block: node scripts/backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<reason>" --activity "<activity log entry>"`,

@@ -101,6 +101,16 @@ Alternatively, set the environment variable:
 export MOLTBOT_WORKSPACE=/path/to/your/workspace
 ```
 
+#### Database location note
+
+MoltBoard always uses the workspace path (from the config or environment variable above) and reads/writes the database at:
+
+```
+<WORKSPACE>/data/tasks.db
+```
+
+The `moltboard/data/tasks.db` file is only used if your workspace path is set to the project directory. If the UI is showing data but the project `data/tasks.db` is empty, your workspace path likely points elsewhere.
+
 ## Agent Task Processing
 
 MoltBoard is designed to work with MoltBot's cron system for automated task processing. When configured, the agent will:

@@ -73,7 +73,9 @@ src/
 
 ### 2. Database (SQLite)
 
-**Location:** `data/tasks.db`
+**Location:** `<WORKSPACE>/data/tasks.db`
+
+The workspace path is resolved by `getWorkspacePath()` and can be overridden by `MOLTBOT_WORKSPACE` or `WORKSPACE_DIR`. The local `moltboard/data/tasks.db` file is only used when the workspace path is set to the project directory.
 
 SQLite with WAL (Write-Ahead Logging) mode for concurrent read/write access.
 
