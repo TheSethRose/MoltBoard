@@ -3,6 +3,7 @@ import { getDb, releaseDb } from "@/lib/db";
 import { DbTask, parseDbTask, WorkNote } from "@/types/task";
 import { isValidTaskStatus } from "@/lib/task-statuses";
 import {
+  appendWorkNote,
   mergeWorkNotes,
   normalizeWorkNote,
   normalizeWorkNotes,
@@ -144,7 +145,7 @@ export const PUT = withErrorHandling(
             "WORK_NOTES_REQUIRED",
           );
         }
-        const updatedNotes = appendNote(
+        const updatedNotes = appendWorkNote(
           JSON.parse(existing.work_notes || "[]"),
           work_notes as RawWorkNote,
         );
@@ -244,21 +245,6 @@ export const PUT = withErrorHandling(
   },
   { context: { route: "/api/tasks/[id]", method: "PUT" } },
 );
-
-function appendNote(
-  existingNotes: RawWorkNote[] | undefined,
-  note: RawWorkNote,
-  defaultAuthor: WorkNote["author"] = "system",
-) {
-  const normalizedExisting = normalizeWorkNotes(existingNotes, {
-    defaultAuthor,
-  });
-  const normalizedNote = normalizeWorkNote(note, {
-    defaultAuthor,
-    fillTimestamp: true,
-  });
-  return [...normalizedExisting, normalizedNote];
-}
 
 // DELETE /api/tasks/[id] - Delete single task
 export const DELETE = withErrorHandling(

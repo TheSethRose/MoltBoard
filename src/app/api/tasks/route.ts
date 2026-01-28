@@ -3,6 +3,7 @@ import { getDb, releaseDb } from "@/lib/db";
 import { DbTask, parseDbTask, WorkNote } from "@/types/task";
 import { getDefaultTaskStatus, isValidTaskStatus } from "@/lib/task-statuses";
 import {
+  appendWorkNote,
   mergeWorkNotes,
   normalizeWorkNote,
   normalizeWorkNotes,

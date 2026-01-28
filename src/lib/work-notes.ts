@@ -67,3 +67,18 @@ export function mergeWorkNotes(
 
   return merged;
 }
+
+export function appendWorkNote(
+  existingNotes: RawWorkNote[] | undefined,
+  note: RawWorkNote,
+  defaultAuthor: WorkNote["author"] = "system",
+): WorkNote[] {
+  const normalizedExisting = normalizeWorkNotes(existingNotes, {
+    defaultAuthor,
+  });
+  const normalizedNote = normalizeWorkNote(note, {
+    defaultAuthor,
+    fillTimestamp: true,
+  });
+  return [...normalizedExisting, normalizedNote];
+}

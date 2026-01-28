@@ -4,19 +4,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 
-const ALL_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
-const ALL_TAGS = [
-  "bug",
-  "feature",
-  "task",
-  "chore",
-  "research",
-  "spike",
-  "maintenance",
-  "safety",
-  "audit",
-] as const;
-
 const DEFAULT_TAG_COLORS: Record<string, string> = {
   bug: "bg-red-500/20 text-red-400 border-red-500/30",
   feature: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -36,12 +23,26 @@ const DEFAULT_PRIORITY_COLORS: Record<string, string> = {
   low: "text-green-400",
 };
 
+const ALL_TAGS = [
+  "bug",
+  "feature",
+  "task",
+  "chore",
+  "research",
+  "spike",
+  "maintenance",
+  "safety",
+  "audit",
+];
+
+const ALL_PRIORITIES = ["urgent", "high", "medium", "low"] as const;
+
+type BlockedFilter = "all" | "unblocked" | "blocked";
+
 export interface KanbanProject {
   id: number;
   name: string;
 }
-
-type BlockedFilter = "all" | "unblocked" | "blocked";
 
 export interface FilterBarProps {
   tagFilter: string[];
@@ -83,9 +84,7 @@ export function FilterBar({
 
   return (
     <div className="mb-4 p-3 bg-card/50 border border-border rounded-lg">
-      {/* Row 1: Search + Project filter */}
       <div className="flex gap-3 mb-3">
-        {/* Search input */}
         <div className="relative flex-1 min-w-[200px]">
           <Search
             size={14}
@@ -109,7 +108,6 @@ export function FilterBar({
           )}
         </div>
 
-        {/* Project filter dropdown */}
         {projects && projects.length > 0 && (
           <div className="relative min-w-[180px]">
             <select
@@ -136,13 +134,9 @@ export function FilterBar({
         )}
       </div>
 
-      {/* Row 2: Filter chips */}
       <div className="flex flex-wrap gap-3 items-center">
-        <span className="text-xs text-muted-foreground font-medium">
-          Filter:
-        </span>
+        <span className="text-xs text-muted-foreground font-medium">Filter:</span>
 
-        {/* Blocked/Unblocked filter */}
         <div className="flex gap-1">
           <button
             onClick={() =>
@@ -176,22 +170,21 @@ export function FilterBar({
 
         <div className="w-px h-4 bg-border" />
 
-        {/* Priority buttons */}
         <div className="flex gap-1">
-          {ALL_PRIORITIES.map((p) => {
-            const isActive = priorityFilter.includes(p);
+          {ALL_PRIORITIES.map((priority) => {
+            const isActive = priorityFilter.includes(priority);
             return (
               <button
-                key={p}
-                onClick={() => onPriorityChange(p)}
+                key={priority}
+                onClick={() => onPriorityChange(priority)}
                 className={cn(
                   "px-2 py-0.5 text-xs rounded border transition-colors",
                   isActive
-                    ? DEFAULT_PRIORITY_COLORS[p] + " border-current"
+                    ? DEFAULT_PRIORITY_COLORS[priority] + " border-current"
                     : "bg-transparent text-muted-foreground border-border hover:bg-accent",
                 )}
               >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {priority.charAt(0).toUpperCase() + priority.slice(1)}
               </button>
             );
           })}
@@ -199,7 +192,6 @@ export function FilterBar({
 
         <div className="w-px h-4 bg-border" />
 
-        {/* Tag buttons */}
         <div className="flex gap-1 flex-wrap">
           {ALL_TAGS.map((tag) => {
             const isActive = tagFilter.includes(tag);
