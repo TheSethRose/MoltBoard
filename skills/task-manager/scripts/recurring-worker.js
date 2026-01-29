@@ -522,6 +522,26 @@ async function main() {
     areDependenciesMet(task.blocked_by, filteredTasks),
   );
 
+  // Auto-pickup mode (for cron workers)
+  const isAutoMode = process.argv.includes("--auto");
+
+  if (isAutoMode && nextTask) {
+    console.log(`=== Auto-Pickup Mode ===`);
+    console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+
+    // Pick up the task
+    await apiClient.updateTaskStatus(nextTask.id, TASK_STATUS.inProgress);
+    await apiClient.appendWorkNote(
+      nextTask.id,
+      `Started: Auto-picked up from cron worker`,
+      "system",
+    );
+
+    console.log(`\n✓ Picked up task #${nextTask.task_number}`);
+    console.log(`  Status: ${TASK_STATUS.ready} → ${TASK_STATUS.inProgress}`);
+    process.exit(0);
+  }
+
   if (!nextTask) {
     // All ready tasks are blocked
     console.log("=== All Ready Tasks Blocked ===");
