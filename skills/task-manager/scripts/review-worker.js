@@ -107,11 +107,19 @@ async function markApproved(taskId, summary, activity) {
 
   const task = await apiClient.getTask({ id: taskId });
   const taskNum = task?.task_number || taskId;
+  const taskTitle = task?.text?.trim();
+  const identityPrefix = taskTitle
+    ? `Task #${taskNum} — ${taskTitle}. `
+    : `Task #${taskNum}. `;
 
   console.log(`[REVIEW] ACTION: Approving task #${taskNum}`);
   console.log(`[REVIEW] SUMMARY: ${summary}`);
 
-  await apiClient.appendWorkNote(taskId, `review:done: ${summary}`, "system");
+  await apiClient.appendWorkNote(
+    taskId,
+    `review:done: ${identityPrefix}${summary}`,
+    "system",
+  );
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
     console.log(`[REVIEW] ACTIVITY: ${activity}`);
@@ -133,12 +141,20 @@ async function requestChanges(taskId, summary, activity) {
 
   const task = await apiClient.getTask({ id: taskId });
   const taskNum = task?.task_number || taskId;
+  const taskTitle = task?.text?.trim();
+  const identityPrefix = taskTitle
+    ? `Task #${taskNum} — ${taskTitle}. `
+    : `Task #${taskNum}. `;
 
   console.log(`[REVIEW] ACTION: Requesting changes for task #${taskNum}`);
   console.log(`[REVIEW] SUMMARY: ${summary}`);
 
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.ready);
-  await apiClient.appendWorkNote(taskId, `review:failed: ${summary}`, "system");
+  await apiClient.appendWorkNote(
+    taskId,
+    `review:failed: ${identityPrefix}${summary}`,
+    "system",
+  );
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
     console.log(`[REVIEW] ACTIVITY: ${activity}`);

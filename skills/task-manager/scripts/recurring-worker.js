@@ -259,6 +259,10 @@ async function completeWithSummary(
   }
 
   const taskNum = task.task_number || taskId;
+  const taskTitle = task?.text?.trim();
+  const identityPrefix = taskTitle
+    ? `Task #${taskNum} — ${taskTitle}. `
+    : `Task #${taskNum}. `;
 
   if (task.status !== TASK_STATUS.inProgress) {
     console.error(
@@ -276,7 +280,7 @@ async function completeWithSummary(
       ? "completed"
       : `moved to ${targetStatus}`;
   const workNotes = parseWorkNotes(task.work_notes);
-  const summaryContent = `✅ Task ${statusLabel}. ${summary ? `Summary: ${summary}` : `Total progress entries: ${workNotes.length}`}`;
+  const summaryContent = `✅ ${identityPrefix}${statusLabel}. ${summary ? `Summary: ${summary}` : `Total progress entries: ${workNotes.length}`}`;
 
   // Add summary note and update status via API
   await apiClient.appendWorkNote(taskId, summaryContent, "system");
@@ -425,9 +429,12 @@ async function main() {
     const hasProgressDetails = meaningfulNotes.length > 0;
 
     if (!hasProgressDetails) {
+      const taskIdentity = currentTask?.task_number
+        ? `Task #${currentTask.task_number}${currentTask.text ? ` — ${currentTask.text}` : ""}`
+        : "Task";
       await apiClient.appendWorkNote(
         currentTask.id,
-        "Started work on task.",
+        `Started work on ${taskIdentity}.`,
         "system",
       );
     }
@@ -502,9 +509,12 @@ async function main() {
 
     // Pick up the task
     await apiClient.updateTaskStatus(nextTask.id, TASK_STATUS.inProgress);
+    const taskIdentity = nextTask?.task_number
+      ? `Task #${nextTask.task_number}${nextTask.text ? ` — ${nextTask.text}` : ""}`
+      : "Task";
     await apiClient.appendWorkNote(
       nextTask.id,
-      `Started: Auto-picked up from cron worker`,
+      `Started: Auto-picked up from cron worker (${taskIdentity})`,
       "system",
     );
 

@@ -81,6 +81,10 @@ async function markReady(taskId, summary, notesUpdate) {
 
   const task = await apiClient.getTask({ id: taskId });
   const taskNum = task?.task_number || taskId;
+  const taskTitle = task?.text?.trim();
+  const identityPrefix = taskTitle
+    ? `Task #${taskNum} — ${taskTitle}. `
+    : `Task #${taskNum}. `;
 
   console.log(`[GROOMER] ACTION: Marking task #${taskNum} as ready`);
   console.log(`[GROOMER] SUMMARY: ${summary}`);
@@ -90,13 +94,17 @@ async function markReady(taskId, summary, notesUpdate) {
   if (notesUpdate) {
     await apiClient.appendWorkNote(
       taskId,
-      `groom:notes: ${notesUpdate}`,
+      `groom:notes: ${identityPrefix}${notesUpdate}`,
       "system",
     );
     console.log(`[GROOMER] NOTES: ${notesUpdate}`);
   }
 
-  await apiClient.appendWorkNote(taskId, `groom:done: ${summary}`, "system");
+  await apiClient.appendWorkNote(
+    taskId,
+    `groom:done: ${identityPrefix}${summary}`,
+    "system",
+  );
   console.log(`[GROOMER] RESULT: Task #${taskNum} → ${TASK_STATUS.ready}`);
 }
 
