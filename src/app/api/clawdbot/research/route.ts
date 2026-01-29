@@ -139,13 +139,103 @@ async function callClawdbot(
   const useLocal =
     (process.env.CLAWDBOT_USE_LOCAL || "false").trim().toLowerCase() ===
     "true";
+  const gatewayUrl = (process.env.CLAWDBOT_GATEWAY_URL || "").trim();
+  const gatewayToken = (process.env.CLAWDBOT_GATEWAY_TOKEN || "").trim();
+  const gatewayTool =
+    (process.env.CLAWDBOT_GATEWAY_TOOL || "chat_send").trim() || "chat_send";
+
+  // Wrap prompt with JSON-only instruction
+  const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
+
+  const extractJsonFromText = (raw: string) => {
+    const jsonMatch = String(raw).match(/\{[\s\S]*\}/);
+    return jsonMatch ? jsonMatch[0] : "";
+  };
+
+  const tryGateway = async () => {
+    if (!gatewayUrl || !gatewayToken) return null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const body = {
+        tool: gatewayTool,
+        sessionKey: sessionId,
+        args: {
+          sessionKey: sessionId,
+          agentId,
+          thinking: thinkingLevel,
+          message: wrappedPrompt,
+        },
+      };
+
+      console.log(
+        `[clawdbot] gateway url=${gatewayUrl} tool=${gatewayTool} session=${sessionId} agent=${agentId} thinking=${thinkingLevel}`,
+      );
+
+      const response = await fetch(`${gatewayUrl}/tools/invoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${gatewayToken}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      const responseText = await response.text();
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Gateway error ${response.status}: ${responseText.substring(0, 500)}`,
+        } as const;
+      }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch {
+        parsed = responseText;
+      }
+
+      const toolResult = parsed?.result ?? parsed?.response ?? parsed;
+      const agentResponse =
+        toolResult?.text ||
+        toolResult?.message ||
+        toolResult?.content ||
+        toolResult?.payloads?.[0]?.text ||
+        toolResult?.output ||
+        "";
+
+      const json = extractJsonFromText(agentResponse || responseText);
+      if (json) {
+        return { success: true, response: json } as const;
+      }
+
+      return {
+        success: false,
+        error: `No JSON found in gateway response: ${String(agentResponse || responseText).substring(0, 300)}`,
+      } as const;
+    } catch (error) {
+      const err = error as Error;
+      return {
+        success: false,
+        error: `Gateway call failed: ${err.message}`,
+      } as const;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  const gatewayConfigured = Boolean(gatewayUrl && gatewayToken);
+  const gatewayResult = await tryGateway();
+  if (gatewayConfigured && gatewayResult) {
+    return gatewayResult;
+  }
 
   // Write prompt to temp file to avoid shell escaping issues
   const tempFile = `/tmp/clawdbot-prompt-${Date.now()}.txt`;
   const fs = await import("node:fs/promises");
-
-  // Wrap prompt with JSON-only instruction
-  const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
 
   try {
     await fs.writeFile(tempFile, wrappedPrompt, "utf-8");
@@ -218,11 +308,11 @@ async function callClawdbot(
         "";
 
       // Extract JSON from agent response (may contain markdown or extra text)
-      const jsonMatch = String(agentResponse).match(/\{[\s\S]*\}/);
+      const jsonMatch = extractJsonFromText(agentResponse);
       if (jsonMatch) {
         return {
           success: true,
-          response: jsonMatch[0],
+          response: jsonMatch,
         };
       }
 
