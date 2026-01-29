@@ -390,14 +390,12 @@ async function main() {
     const minutesInProgress = Math.round((now - updatedAt) / 1000 / 60);
     const projectRoot = await getProjectRootForTask(currentTask);
 
-    console.log("=== Currently In Progress ===");
-    console.log(`#${currentTask.task_number}: ${currentTask.text}`);
-    console.log(
-      `Priority: ${currentTask.priority || "none"} | Time: ${minutesInProgress} min`,
-    );
+    console.log(`[WORKER] IN_PROGRESS: Task #${currentTask.task_number} (id=${currentTask.id})`);
+    console.log(`[WORKER] TITLE: ${currentTask.text}`);
+    console.log(`[WORKER] DURATION: ${minutesInProgress} min`);
     if (projectRoot) {
-      console.log(`Project Root: ${projectRoot}`);
-      console.log("→ Work ONLY inside the Project Root (set CWD there).");
+      console.log(`[WORKER] PROJECT: ${projectRoot}`);
+    }
     }
     if (currentTask.notes) {
       console.log(

@@ -153,6 +153,8 @@ async function requestChanges(taskId, summary, activity) {
 }
 
 async function main() {
+  console.log(`[REVIEW] START: ${new Date().toISOString()}`);
+
   const approveId = parseInt(getArgValue("--approve") || "", 10);
   const requestChangesId = parseInt(getArgValue("--request-changes") || "", 10);
   const summaryArg = getArgValue("--summary");
@@ -160,11 +162,13 @@ async function main() {
 
   if (approveId) {
     await markApproved(approveId, summaryArg, activityArg);
+    console.log(`[REVIEW] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
   if (requestChangesId) {
     await requestChanges(requestChangesId, summaryArg, activityArg);
+    console.log(`[REVIEW] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
@@ -175,6 +179,8 @@ async function main() {
     .filter((t) => t.status === TASK_STATUS.review)
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
 
+  console.log(`[REVIEW] SCAN: Found ${reviewTasks.length} task(s) in review status`);
+
   const nextTask = reviewTasks.find(
     (task) =>
       !hasCompletedReview(task.work_notes) &&
@@ -182,50 +188,31 @@ async function main() {
   );
 
   if (!nextTask) {
-    console.log("=== No Review Tasks ===");
-    console.log(
-      "All review tasks have recent review notes or none are available.",
-    );
+    console.log("[REVIEW] SKIP: No tasks need review (all have recent review notes or none available)");
+    console.log(`[REVIEW] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
-  console.log("=== Review Queue ===");
-  console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+  console.log(`[REVIEW] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(`[REVIEW] TITLE: ${nextTask.text}`);
+  
   if (nextTask.notes) {
-    console.log(`\nNotes:\n${nextTask.notes}`);
+    console.log(`[REVIEW] HAS_NOTES: yes (${nextTask.notes.length} chars)`);
   }
   
   const notes = parseWorkNotes(nextTask.work_notes);
-  if (notes.length > 0) {
-    console.log("\nRecent Work Notes:");
-    notes.slice(-10).forEach((note) => {
-      const author = note.author || "system";
-      const ts = note.timestamp || "";
-      const content = note.content || "";
-      console.log(`- [${author}] ${ts} ${content}`.trim());
-    });
-  }
+  console.log(`[REVIEW] WORK_NOTES: ${notes.length} entries`);
   
-  console.log("\n=== REVIEW CHECKLIST (MANDATORY) ===");
-  console.log("You MUST complete each step before approving:\n");
-  console.log("1. RUN: git status -sb  → List all changed/added files.");
-  console.log("2. RUN: cat <filepath>  → Read each changed file.");
-  console.log(
-    "3. RUN: grep -n 'TODO\\|mock\\|placeholder' <filepath>  → Search for incomplete code.",
-  );
-  console.log("4. VERIFY: Implementation is complete - not a stub or skeleton.");
-  console.log("5. TRACE: API → client → UI (all connected?).\n");
-  console.log("⚠️  You MUST execute ONE of these commands before exiting:");
-  console.log("   - If ANY mock/placeholder/TODO found → --request-changes");
-  console.log("   - If ALL code is real and complete  → --approve\n");
-  console.log("DO NOT exit without running --approve or --request-changes.");
-  console.log("\nCommands:");
-  console.log(
-    `- Approve: bun review-worker.js --approve ${nextTask.id} --summary "<what was verified>"`,
-  );
-  console.log(
-    `- Request changes: bun review-worker.js --request-changes ${nextTask.id} --summary "<file:line evidence>"`,
-  );
+  // Output the checklist for manual review
+  console.log(`[REVIEW] CHECKLIST:`);
+  console.log(`  1. git status -sb`);
+  console.log(`  2. cat <each changed file>`);
+  console.log(`  3. grep -n 'TODO|mock|placeholder' <files>`);
+  console.log(`  4. Verify implementation complete`);
+  console.log(`[REVIEW] COMMANDS:`);
+  console.log(`  Approve: bun review-worker.js --approve ${nextTask.id} --summary "<verified>"`);
+  console.log(`  Reject:  bun review-worker.js --request-changes ${nextTask.id} --summary "<issues>"`);
+  console.log(`[REVIEW] END: ${new Date().toISOString()}`);
 }
 
 main().catch((err) => {

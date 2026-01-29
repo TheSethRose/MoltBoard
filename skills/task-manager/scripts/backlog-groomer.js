@@ -171,32 +171,37 @@ async function main() {
   const notes = parseWorkNotes(nextTask.work_notes);
   console.log(`[GROOMER] WORK_NOTES: ${notes.length} entries`);
 
-  // Auto-groom: if task has clear scope in notes, auto-mark ready
-  const hasScope = nextTask.notes && (
+  // Auto-groom: generate a summary and mark ready
+  // Priority: structured scope > any notes > task title
+  let summary;
+  let groomReason;
+
+  const hasStructuredScope = nextTask.notes && (
     nextTask.notes.includes("## Scope") ||
     nextTask.notes.includes("## Target") ||
-    nextTask.notes.includes("## Summary")
+    nextTask.notes.includes("## Summary") ||
+    nextTask.notes.includes("## Goal")
   );
 
-  if (hasScope) {
-    // Generate summary from notes
+  if (hasStructuredScope) {
+    // Extract structured section
     const summaryMatch = nextTask.notes.match(/## (Summary|Scope|Target|Goal)[\s\S]*?(?=## |$)/i);
-    const summary = summaryMatch
-      ? `Plan: ${summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 200)}...`
-      : `Review and implement: ${nextTask.text}`;
-
-    console.log(`[GROOMER] AUTO_GROOM: Task has structured scope section`);
-    await markReady(nextTask.id, summary);
-    console.log(`[GROOMER] END: ${new Date().toISOString()}`);
-    process.exit(0);
+    summary = summaryMatch
+      ? summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 300)
+      : nextTask.text;
+    groomReason = "structured-scope";
+  } else if (nextTask.notes && nextTask.notes.trim().length > 10) {
+    // Use first 300 chars of notes as plan
+    summary = nextTask.notes.trim().replace(/\n/g, " ").slice(0, 300);
+    groomReason = "notes-excerpt";
+  } else {
+    // Fallback: use task title
+    summary = `Implement: ${nextTask.text}`;
+    groomReason = "title-only";
   }
 
-  // No auto-groom possible - output instructions for manual processing
-  console.log(`[GROOMER] MANUAL_REQUIRED: Task lacks structured scope (## Scope/Target/Summary)`);
-  console.log(`[GROOMER] INSTRUCTIONS:`);
-  console.log(`  1) Add scope/acceptance criteria to task notes`);
-  console.log(`  2) Then run: bun backlog-groomer.js --mark-ready ${nextTask.id} --summary "<plan>"`);
-  console.log(`  OR block: bun backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<why>"`);
+  console.log(`[GROOMER] AUTO_GROOM: ${groomReason}`);
+  await markReady(nextTask.id, summary);
   console.log(`[GROOMER] END: ${new Date().toISOString()}`);
 }
 
