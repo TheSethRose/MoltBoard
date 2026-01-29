@@ -13,6 +13,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "node:child_process";
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 import {
   withErrorHandling,
@@ -118,8 +121,7 @@ RULES:
 /**
  * Call Clawdbot with the given prompt via CLI
  *
- * Clawdbot operates as a local Gateway with WebSocket control plane.
- * For API routes, we use the CLI interface: `clawdbot agent --local --agent main --message "..."`
+ * The CLI handles sending a message and waiting for the turn to complete.
  * The --local flag runs the embedded agent with model provider API keys from env.
  * The --json flag returns structured output with payloads array.
  */
@@ -129,7 +131,7 @@ async function callClawdbot(
   const timeout = parseInt(process.env.CLAWDBOT_TIMEOUT || "120000", 10);
   const normalizeThinking = (raw: string | undefined) => {
     const normalized = (raw || "").trim().toLowerCase();
-    const allowed = new Set(["off", "minimal", "low", "medium", "high"]);
+    const allowed = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
     if (allowed.has(normalized)) return normalized;
     return "low";
   };
@@ -139,114 +141,20 @@ async function callClawdbot(
   const useLocal =
     (process.env.CLAWDBOT_USE_LOCAL || "false").trim().toLowerCase() ===
     "true";
-  const gatewayUrl = (process.env.CLAWDBOT_GATEWAY_URL || "").trim();
-  const gatewayToken = (process.env.CLAWDBOT_GATEWAY_TOKEN || "").trim();
-  const normalizeGatewayTool = (raw: string | undefined) => {
-    const normalized = (raw || "").trim().toLowerCase();
-    if (!normalized) return "message";
-    if (["send", "chat_send", "message.send"].includes(normalized)) {
-      return "message";
-    }
-    return normalized;
-  };
-  const gatewayTool = normalizeGatewayTool(process.env.CLAWDBOT_GATEWAY_TOOL);
-  const gatewayChannel =
-    (process.env.CLAWDBOT_GATEWAY_CHANNEL || "webchat").trim() || "webchat";
-  const gatewayTarget =
-    (process.env.CLAWDBOT_GATEWAY_TARGET || sessionId).trim() || sessionId;
 
   // Wrap prompt with JSON-only instruction
-  const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
+  const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY valid JSON. No markdown fences, no explanations, no text before or after the JSON.`;
 
   const extractJsonFromText = (raw: string) => {
     const jsonMatch = String(raw).match(/\{[\s\S]*\}/);
     return jsonMatch ? jsonMatch[0] : "";
   };
 
-  const tryGateway = async () => {
-    if (!gatewayUrl || !gatewayToken) return null;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const body = {
-        tool: gatewayTool,
-        sessionKey: sessionId,
-        args: {
-          action: "send",
-          channel: gatewayChannel,
-          target: gatewayTarget,
-          message: wrappedPrompt,
-        },
-      };
-
-      console.log(
-        `[clawdbot] gateway url=${gatewayUrl} tool=${gatewayTool} session=${sessionId} agent=${agentId} thinking=${thinkingLevel} channel=${gatewayChannel} target=${gatewayTarget}`,
-      );
-
-      const response = await fetch(`${gatewayUrl}/tools/invoke`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${gatewayToken}`,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      const responseText = await response.text();
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `Gateway error ${response.status}: ${responseText.substring(0, 500)}`,
-        } as const;
-      }
-
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(responseText);
-      } catch {
-        parsed = responseText;
-      }
-
-      const toolResult = parsed?.result ?? parsed?.response ?? parsed;
-      const agentResponse =
-        toolResult?.text ||
-        toolResult?.message ||
-        toolResult?.content ||
-        toolResult?.payloads?.[0]?.text ||
-        toolResult?.output ||
-        "";
-
-      const json = extractJsonFromText(agentResponse || responseText);
-      if (json) {
-        return { success: true, response: json } as const;
-      }
-
-      return {
-        success: false,
-        error: `No JSON found in gateway response: ${String(agentResponse || responseText).substring(0, 300)}`,
-      } as const;
-    } catch (error) {
-      const err = error as Error;
-      return {
-        success: false,
-        error: `Gateway call failed: ${err.message}`,
-      } as const;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-
-  const gatewayConfigured = Boolean(gatewayUrl && gatewayToken);
-  const gatewayResult = await tryGateway();
-  if (gatewayConfigured && gatewayResult) {
-    return gatewayResult;
-  }
-
   // Write prompt to temp file to avoid shell escaping issues
-  const tempFile = `/tmp/clawdbot-prompt-${Date.now()}.txt`;
-  const fs = await import("node:fs/promises");
+  const tempFile = path.join(
+    "/tmp",
+    `clawdbot-prompt-${crypto.randomUUID()}.txt`,
+  );
 
   try {
     await fs.writeFile(tempFile, wrappedPrompt, "utf-8");
@@ -273,7 +181,14 @@ async function callClawdbot(
         ({ stdout, stderr } = await execAsync(cmd, {
           timeout,
           maxBuffer: 2 * 1024 * 1024, // 2MB buffer
-          env: { ...process.env, NO_COLOR: "1" },
+          env: {
+            ...process.env,
+            NO_COLOR: "1",
+            CLAWDBOT_GATEWAY_TOKEN:
+              process.env.CLAWDBOT_GATEWAY_TOKEN ||
+              process.env.GATEWAY_TOKEN ||
+              "",
+          },
         }));
         if (stderr) {
           console.log(`[clawdbot] stderr=${stderr.substring(0, 2000)}`);
@@ -348,7 +263,6 @@ async function callClawdbot(
     }
   } catch (error) {
     // Clean up temp file on error
-    const fs = await import("node:fs/promises");
     await fs.unlink(tempFile).catch(() => {});
 
     const err = error as {
