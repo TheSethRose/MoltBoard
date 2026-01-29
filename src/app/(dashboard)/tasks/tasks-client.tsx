@@ -6,16 +6,18 @@ import { KanbanBoard } from "@/components/ui/kanban-board";
 import { TaskListView } from "@/components/ui/task-list-view";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Button } from "@/components/ui/button";
-import { LayoutList, Kanban } from "lucide-react";
+import { Archive, LayoutList, Kanban } from "lucide-react";
 import { TaskModal } from "./TaskModal";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useTaskMutations, useKeyboardNav } from "./hooks";
 import type { Task, Project } from "./types";
+import { useArchiveSettings } from "@/hooks/use-archive-settings";
 import {
   getTaskStatuses,
   getDefaultTaskStatus,
   formatStatusLabel,
 } from "@/lib/task-statuses";
+import { toast } from "sonner";
 
 const TASK_STATUSES = getTaskStatuses();
 const DEFAULT_TASK_STATUS = getDefaultTaskStatus(TASK_STATUSES);
@@ -51,6 +53,9 @@ export function TasksClient({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const { settings: archiveSettings } = useArchiveSettings();
 
   // View toggle state
   type ViewMode = "kanban" | "list";
@@ -187,6 +192,38 @@ export function TasksClient({
     }
   };
 
+  const handleArchiveTasks = async () => {
+    setIsArchiving(true);
+    try {
+      const response = await fetch("/api/tasks/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          daysOld: archiveSettings.daysOld,
+          archiveOnly: archiveSettings.archiveOnly,
+        }),
+      });
+
+      const data = await response
+        .json()
+        .catch(() => ({ message: "Archive request completed" }));
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || data.message || "Archive failed");
+      }
+
+      const message =
+        data.message || `Archived ${data.archived ?? 0} task(s)`;
+      toast.success(message);
+      mutate();
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error("Archive failed");
+      toast.error(err.message);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
   // Unified modal handler for both add and edit
   const handleSaveTask = async (
     id: number | null,
@@ -283,26 +320,38 @@ export function TasksClient({
   return (
     <div className="h-full flex flex-col">
       {/* View Toggle */}
-      <div className="flex items-center justify-end gap-2 p-4 border-b border-border">
-        <span className="text-sm text-muted-foreground mr-2">View:</span>
+      <div className="flex items-center justify-between gap-2 p-4 border-b border-border">
         <Button
-          variant={viewMode === "kanban" ? "default" : "ghost"}
+          variant="outline"
           size="sm"
-          onClick={() => setViewMode("kanban")}
+          onClick={() => setArchiveConfirmOpen(true)}
           className="gap-1"
+          disabled={isArchiving}
         >
-          <Kanban size={14} />
-          Kanban
+          <Archive size={14} />
+          Archive Tasks
         </Button>
-        <Button
-          variant={viewMode === "list" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setViewMode("list")}
-          className="gap-1"
-        >
-          <LayoutList size={14} />
-          List
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-sm text-muted-foreground mr-2">View:</span>
+          <Button
+            variant={viewMode === "kanban" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("kanban")}
+            className="gap-1"
+          >
+            <Kanban size={14} />
+            Kanban
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="gap-1"
+          >
+            <LayoutList size={14} />
+            List
+          </Button>
+        </div>
       </div>
 
       {/* Kanban View */}
@@ -421,6 +470,17 @@ export function TasksClient({
         cancelLabel="Cancel"
         onConfirm={handleConfirmedDelete}
         variant="destructive"
+      />
+
+      <ConfirmationDialog
+        open={archiveConfirmOpen}
+        onOpenChange={setArchiveConfirmOpen}
+        title="Archive completed tasks?"
+        description={`Archive completed tasks older than ${archiveSettings.daysOld} day(s). ${archiveSettings.archiveOnly ? "Tasks will be soft-archived." : "Tasks will be permanently deleted."}`}
+        confirmLabel={isArchiving ? "Archiving..." : "Archive"}
+        cancelLabel="Cancel"
+        onConfirm={handleArchiveTasks}
+        variant="default"
       />
 
       <KeyboardShortcutsDialog
