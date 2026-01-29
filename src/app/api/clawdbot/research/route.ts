@@ -1,19 +1,18 @@
 /**
- * Clawdbot Research Assistant API
+ * Moltbot Assist API
  *
- * Provides read-only research assistance by invoking Clawdbot for:
+ * Provides read-only research assistance using the Pi CLI:
  * 1. Task form auto-fill: Generates structured task fields from a natural language prompt
  * 2. Closure summary: Generates a summary suitable for GitHub issue closure
  *
  * All responses are structured (JSON) for automatic field mapping.
  *
- * Integration: Uses Clawdbot CLI (`clawdbot agent --message`) since Clawdbot
- * operates as a local Gateway, not a stateless REST API.
+ * Integration: Uses Clawdbot config files to extract model/API key, then calls Pi directly.
+ * The user running this process must have read access to /Users/clawdbot/.clawdbot/ paths.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -24,6 +23,98 @@ import {
 } from "@/lib/api-error-handler";
 
 const execAsync = promisify(exec);
+
+// --- Clawdbot config paths ---
+const CONFIG_PATH = "/Users/clawdbot/.clawdbot/clawdbot.json";
+const AUTH_PATH =
+  "/Users/clawdbot/.clawdbot/agents/main/agent/auth-profiles.json";
+
+interface ClawdbotConfig {
+  agents?: {
+    defaults?: {
+      model?: {
+        primary?: string;
+      };
+    };
+  };
+  models?: {
+    providers?: Record<
+      string,
+      {
+        baseUrl?: string;
+        api?: string;
+      }
+    >;
+  };
+}
+
+interface AuthProfiles {
+  profiles: Record<
+    string,
+    {
+      provider: string;
+      apiKey?: string;
+      token?: string;
+      mode?: string;
+    }
+  >;
+}
+
+/**
+ * Extract model, API key, and base URL from Clawdbot config files.
+ */
+async function getClawdbotSecrets(): Promise<{
+  model: string;
+  env: Record<string, string>;
+} | null> {
+  try {
+    const configRaw = await fs.readFile(CONFIG_PATH, "utf-8");
+    const config = JSON.parse(configRaw) as ClawdbotConfig;
+    const modelId =
+      config.agents?.defaults?.model?.primary || "anthropic/claude-sonnet-4-20250514";
+
+    const provider = modelId.split("/")[0];
+    const providerConfig = config.models?.providers?.[provider];
+    const baseUrl = providerConfig?.baseUrl;
+
+    const authRaw = await fs.readFile(AUTH_PATH, "utf-8");
+    const auth = JSON.parse(authRaw) as AuthProfiles;
+
+    const profileKey = Object.keys(auth.profiles).find(
+      (key) =>
+        auth.profiles[key].provider === provider ||
+        key.startsWith(`${provider}:`),
+    );
+
+    if (!profileKey) {
+      throw new Error(`No auth profile found for provider: ${provider}`);
+    }
+
+    const profile = auth.profiles[profileKey];
+    const apiKey = profile.apiKey || profile.token;
+
+    if (!apiKey) {
+      throw new Error(`Auth profile for ${provider} has no API key/token`);
+    }
+
+    const envVars: Record<string, string> = {
+      [`${provider.toUpperCase()}_API_KEY`]: apiKey,
+    };
+
+    if (baseUrl) {
+      envVars[`${provider.toUpperCase()}_BASE_URL`] = baseUrl;
+    }
+
+    return {
+      model: modelId,
+      env: envVars,
+    };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[SecretExtraction] Failed to read Clawdbot config: ${msg}`);
+    return null;
+  }
+}
 
 export interface ResearchRequest {
   /** Type of research assistance */
@@ -119,152 +210,56 @@ RULES:
 };
 
 /**
- * Call Clawdbot with the given prompt via CLI
- *
- * The CLI handles sending a message and waiting for the turn to complete.
- * The --local flag runs the embedded agent with model provider API keys from env.
- * The --json flag returns structured output with payloads array.
+ * Call Pi CLI with Clawdbot identity (model + API key from config).
  */
-async function callClawdbot(
+async function callPi(
   prompt: string,
 ): Promise<{ success: boolean; response?: string; error?: string }> {
   const timeout = parseInt(process.env.CLAWDBOT_TIMEOUT || "120000", 10);
-  const normalizeThinking = (raw: string | undefined) => {
-    const normalized = (raw || "").trim().toLowerCase();
-    const allowed = new Set(["off", "minimal", "low", "medium", "high", "xhigh"]);
-    if (allowed.has(normalized)) return normalized;
-    return "low";
-  };
-  const thinkingLevel = normalizeThinking(process.env.CLAWDBOT_THINKING);
-  const agentId = process.env.CLAWDBOT_AGENT || "main";
-  const sessionId = process.env.CLAWDBOT_SESSION_ID || "research";
-  const useLocal =
-    (process.env.CLAWDBOT_USE_LOCAL || "false").trim().toLowerCase() ===
-    "true";
+  const secrets = await getClawdbotSecrets();
 
-  // Wrap prompt with JSON-only instruction
+  const model = secrets?.model || "anthropic/claude-sonnet-4-20250514";
+  const extraEnv = secrets?.env || {};
+
   const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY valid JSON. No markdown fences, no explanations, no text before or after the JSON.`;
-
-  const extractJsonFromText = (raw: string) => {
-    const jsonMatch = String(raw).match(/\{[\s\S]*\}/);
-    return jsonMatch ? jsonMatch[0] : "";
-  };
-
-  // Write prompt to temp file to avoid shell escaping issues
-  const tempFile = path.join(
-    "/tmp",
-    `clawdbot-prompt-${crypto.randomUUID()}.txt`,
-  );
+  const tempFile = path.join("/tmp", `pi-request-${Date.now()}.txt`);
 
   try {
     await fs.writeFile(tempFile, wrappedPrompt, "utf-8");
 
-    // Build CLI command - use --local for embedded agent, --json for structured output
-    // --agent is required to specify which agent to use
-    // --session-id ensures we reuse the same session instead of creating a new one
-    // Use full path for reliability when running from server context
-    const clawdbotPath =
-      process.env.CLAWDBOT_PATH || "/opt/homebrew/bin/clawdbot";
-    const localFlag = useLocal ? "--local " : "";
-    const cmd = `${clawdbotPath} agent ${localFlag}--json --thinking ${thinkingLevel} --agent ${agentId} --session-id ${sessionId} --message "$(cat ${tempFile})" 2>&1`;
+    const piPath = process.env.PI_PATH || "/opt/homebrew/bin/pi";
+    const cmd = `${piPath} -p "$(cat ${tempFile})" --model ${model} 2>&1`;
 
-    console.log(
-      `[clawdbot] invoke agentId=${agentId} sessionId=${sessionId} thinking=${thinkingLevel} local=${useLocal}`,
-    );
-    console.log(`[clawdbot] cmd=${cmd.replace(/\s+/g, " ")}`);
+    console.log(`[DirectAPI] Running pi as ${model}...`);
 
-    let stdout = "";
-    let stderr = "";
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        ({ stdout, stderr } = await execAsync(cmd, {
-          timeout,
-          maxBuffer: 2 * 1024 * 1024, // 2MB buffer
-          env: {
-            ...process.env,
-            NO_COLOR: "1",
-            CLAWDBOT_GATEWAY_TOKEN:
-              process.env.CLAWDBOT_GATEWAY_TOKEN ||
-              process.env.GATEWAY_TOKEN ||
-              "",
-          },
-        }));
-        if (stderr) {
-          console.log(`[clawdbot] stderr=${stderr.substring(0, 2000)}`);
-        }
-        if (stdout) {
-          console.log(`[clawdbot] stdout=${stdout.substring(0, 2000)}`);
-        }
-        break;
-      } catch (execError) {
-        const execErr = execError as {
-          message?: string;
-          stdout?: string;
-          stderr?: string;
-        };
-        const details = [execErr.message, execErr.stdout, execErr.stderr]
-          .filter(Boolean)
-          .join(" | ");
-        const isLocked = details.includes("session file locked");
-        if (isLocked && attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        throw execError;
-      }
-    }
-
-    // Clean up temp file
-    await fs.unlink(tempFile).catch(() => {});
+    const { stdout, stderr } = await execAsync(cmd, {
+      timeout,
+      maxBuffer: 2 * 1024 * 1024,
+      env: {
+        ...process.env,
+        ...extraEnv,
+        NO_COLOR: "1",
+      },
+    });
 
     const output = stdout || stderr || "";
-
-    // With --json flag, clawdbot returns JSON with payloads array
-    // Format: { "payloads": [{ "text": "...", "mediaUrl": null }], "meta": {...} }
-    try {
-      const cliResult = JSON.parse(output);
-
-      // Extract text from payloads array
-      const agentResponse =
-        cliResult.payloads?.[0]?.text ||
-        cliResult.response ||
-        cliResult.message ||
-        cliResult.content ||
-        "";
-
-      // Extract JSON from agent response (may contain markdown or extra text)
-      const jsonMatch = extractJsonFromText(agentResponse);
-      if (jsonMatch) {
-        return {
-          success: true,
-          response: jsonMatch,
-        };
-      }
-
-      return {
-        success: false,
-        error: `No JSON found in agent response: ${String(agentResponse).substring(0, 300)}`,
-      };
-    } catch {
-      // If CLI output isn't JSON, try to extract JSON from raw output
-      const jsonMatch = output.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return {
-          success: true,
-          response: jsonMatch[0],
-        };
-      }
-
-      return {
-        success: false,
-        error: `Failed to parse Clawdbot output: ${output.substring(0, 500)}`,
-      };
+    if (stderr) {
+      console.log(`[DirectAPI] stderr=${stderr.substring(0, 500)}`);
     }
-  } catch (error) {
-    // Clean up temp file on error
-    await fs.unlink(tempFile).catch(() => {});
+    if (stdout) {
+      console.log(`[DirectAPI] stdout=${stdout.substring(0, 500)}`);
+    }
 
+    const jsonMatch = output.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return { success: true, response: jsonMatch[0] };
+    }
+
+    return {
+      success: false,
+      error: `No JSON found in response: ${output.substring(0, 300)}`,
+    };
+  } catch (error) {
     const err = error as {
       message?: string;
       code?: string;
@@ -272,21 +267,17 @@ async function callClawdbot(
       stdout?: string;
       stderr?: string;
     };
+
     if (err.killed) {
-      return {
-        success: false,
-        error: `Clawdbot timed out after ${timeout}ms`,
-      };
+      return { success: false, error: `Pi timed out after ${timeout}ms` };
     }
 
-    // Include stdout/stderr in error for debugging
     const details = [err.message, err.stdout, err.stderr]
       .filter(Boolean)
       .join(" | ");
-    return {
-      success: false,
-      error: details || "Failed to call Clawdbot CLI",
-    };
+    return { success: false, error: details || "Failed to call Pi CLI" };
+  } finally {
+    await fs.unlink(tempFile).catch(() => {});
   }
 }
 
@@ -361,18 +352,18 @@ export const POST = withErrorHandling(
       prompt = prompt.replace("{{NOTES}}", "(No additional notes provided)");
     }
 
-    // Call Clawdbot
-    const clawdbotResult = await callClawdbot(prompt);
+    // Call Pi
+    const piResult = await callPi(prompt);
 
-    if (!clawdbotResult.success) {
+    if (!piResult.success) {
       throw internalError(
-        clawdbotResult.error || "Failed to get response from Clawdbot",
-        "CLAWDBOT_ERROR",
+        piResult.error || "Failed to get response from Pi",
+        "PI_ERROR",
       );
     }
 
     // Parse and validate response
-    const response = parseResearchResponse(clawdbotResult.response!, body.type);
+    const response = parseResearchResponse(piResult.response!, body.type);
 
     return NextResponse.json({
       type: body.type,
