@@ -1,130 +1,76 @@
 # MoltBoard Infrastructure
 
-This document provides a technical overview of how MoltBoard works, including its architecture, data flow, and integration points.
+This document describes how MoltBoard is assembled, how data flows through the system, and how runtime services are operated on macOS.
 
 ---
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              MoltBoard                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │   Browser   │───▶│  Next.js    │───▶│   SQLite    │                 │
-│  │   (React)   │◀───│  API Routes │◀───│  Database   │                 │
-│  └─────────────┘    └─────────────┘    └─────────────┘                 │
-│         │                  │                  ▲                         │
-│         │                  │                  │                         │
-│         │                  ▼                  │                         │
-│         │           ┌─────────────┐           │                         │
-│         │           │  GitHub API │           │                         │
-│         │           │  (Octokit)  │           │                         │
-│         │           └─────────────┘           │                         │
-│         │                                     │                         │
-│         │           ┌─────────────┐           │                         │
-│         └──────────▶│  CLI Tools  │───────────┘                         │
-│                     │    (Bun)    │                                     │
-│                     └─────────────┘                                     │
-│                            │                                            │
-│                            ▼                                            │
-│                     ┌─────────────┐                                     │
-│                     │ Cron Workers│                                     │
-│                     └─────────────┘                                     │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                  MoltBoard                                 │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌─────────────┐    ┌─────────────────────┐    ┌─────────────┐             │
+│  │   Browser   │───▶│  Next.js App Router │───▶│   SQLite    │             │
+│  │   (React)   │◀───│  UI + API Routes    │◀───│  Database   │             │
+│  └─────────────┘    └─────────────────────┘    └─────────────┘             │
+│          │                    │                         ▲                 │
+│          │                    │                         │                 │
+│          │                    ▼                         │                 │
+│          │             ┌─────────────┐                  │                 │
+│          │             │ GitHub API  │                  │                 │
+│          │             │  (Octokit)  │                  │                 │
+│          │             └─────────────┘                  │                 │
+│          │                                               │                 │
+│          │             ┌────────────────────┐            │                 │
+│          └───────────▶ │ CLI + Cron Workers │────────────┘                 │
+│                        │ (Bun scripts)      │                              │
+│                        └────────────────────┘                              │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## Core Components
 
-### 1. Web Application (Next.js)
+### 1) Web Application (Next.js 16)
 
 **Location:** `src/`
 
-MoltBoard uses Next.js 16 with the App Router for both frontend and backend:
+- App Router monolith: UI pages and API routes live in the same codebase.
+- UI pages are grouped in `src/app/(dashboard)`.
+- API routes are in `src/app/api`.
+- React 19 + Tailwind CSS 4 + Radix UI primitives (components in `src/components/ui`).
 
 ```
 src/
 ├── app/
-│   ├── (dashboard)/          # Route group for dashboard pages
-│   │   ├── layout.tsx        # Sidebar layout wrapper
-│   │   ├── tasks/            # Task management UI
-│   │   ├── projects/         # Project management UI
-│   │   └── status/           # System monitoring UI
+│   ├── (dashboard)/          # Dashboard pages (tasks/projects/status)
 │   ├── api/                  # REST API endpoints
-│   │   ├── tasks/            # Task CRUD operations
-│   │   ├── projects/         # Project CRUD + GitHub sync
-│   │   └── status/           # Health checks
 │   ├── layout.tsx            # Root layout
 │   └── page.tsx              # Landing redirect
 ├── components/
-│   ├── ui/                   # Reusable UI components
-│   └── dashboard/            # Dashboard-specific components
+│   ├── ui/                   # UI primitives
+│   └── dashboard/            # Dashboard layout (Sidebar)
 ├── lib/
-│   ├── db.ts                 # Database connection pool
+│   ├── db.ts                 # SQLite connection pool
 │   ├── github.ts             # GitHub API client
-│   ├── workspace-path.ts     # Workspace resolution
-│   └── api-error-handler.ts  # Error handling utilities
+│   ├── workspace-path.ts     # Workspace path resolution
+│   └── api-error-handler.ts  # API error wrapper
 └── types/
-    ├── task.ts               # Task type definitions
-    └── project.ts            # Project type definitions
+    ├── task.ts
+    └── project.ts
 ```
 
-### 2. Database (SQLite)
+### 2) Database (SQLite)
 
 **Location:** `<WORKSPACE>/data/tasks.db`
 
-The workspace path is resolved by `getWorkspacePath()` and can be overridden by `MOLTBOT_WORKSPACE` or `WORKSPACE_DIR`. The local `moltboard/data/tasks.db` file is only used when the workspace path is set to the project directory.
-
-SQLite with WAL (Write-Ahead Logging) mode for concurrent read/write access.
-
-#### Schema
-
-```sql
--- Tasks table
-CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_number INTEGER,
-    text TEXT NOT NULL,
-    status TEXT DEFAULT 'backlog',
-    priority TEXT,
-    tags TEXT DEFAULT '[]',           -- JSON array
-    work_notes TEXT DEFAULT '[]',     -- JSON array
-    blocked_by TEXT DEFAULT '[]',     -- JSON array of task IDs
-    sort_order INTEGER DEFAULT 0,
-    project_id INTEGER,
-    github_issue_id INTEGER,
-    github_issue_repo TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (project_id) REFERENCES projects(id)
-);
-
--- Projects table
-CREATE TABLE projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    color TEXT DEFAULT '#3B82F6',
-    tech_stack TEXT DEFAULT '[]',     -- JSON array
-    local_path TEXT,
-    workspace_path TEXT,
-    github_repo_url TEXT,
-    github_sync_settings TEXT,        -- JSON object
-    auto_provision_workspace INTEGER DEFAULT 0,
-    last_synced_at TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
--- Migrations tracking
-CREATE TABLE _migrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    applied_at TEXT DEFAULT (datetime('now'))
-);
-```
+- Single data store using SQLite with WAL enabled for concurrency.
+- JSON-backed fields stored as strings: `tags`, `blocked_by`, `work_notes`, `tech_stack`, `github_sync_settings`.
+- Task statuses are validated via `src/lib/task-statuses.ts`.
 
 #### Connection Pool
 
@@ -134,153 +80,91 @@ const POOL_SIZE = 5;
 const pool: Database[] = [];
 
 export function getDb(): Database {
-  if (pool.length > 0) {
-    return pool.pop()!;
-  }
+  if (pool.length > 0) return pool.pop()!;
   const db = new Database(getDatabasePath());
   db.pragma("journal_mode = WAL");
   return db;
 }
 
 export function releaseDb(db: Database): void {
-  if (pool.length < POOL_SIZE) {
-    pool.push(db);
-  } else {
-    db.close();
-  }
+  if (pool.length < POOL_SIZE) pool.push(db);
+  else db.close();
 }
 ```
 
-### 3. GitHub Integration
+### 3) GitHub Integration
 
 **Location:** `src/lib/github.ts`
 
-Uses Octokit for GitHub API access with built-in rate limiting awareness.
+- Uses Octokit with rate limit awareness.
+- Sync workflow is triggered by `POST /api/projects/[id]/sync`.
+- Tasks map to issues via `github_issue_id` and `github_issue_repo`.
 
-```typescript
-// Rate limit handling
-interface RateLimitInfo {
-  remaining: number;
-  reset: Date;
-  limit: number;
-}
-
-// Issue sync flow
-async function syncGitHubIssues(projectId: number): Promise<SyncResult> {
-  // 1. Get project with GitHub settings
-  // 2. Fetch issues from GitHub API
-  // 3. Match with existing tasks by github_issue_id
-  // 4. Create new tasks for new issues
-  // 5. Update existing tasks if issue changed
-  // 6. Optionally close tasks for closed issues
-}
-```
-
-#### Sync Settings
-
-Projects can configure selective issue sync:
-
-```json
-{
-  "syncEnabled": true,
-  "syncLabels": ["bug", "enhancement"],
-  "syncAssignees": ["username"],
-  "autoCloseOnRemote": false,
-  "createLocalTasks": true
-}
-```
-
-### 4. Workspace Configuration
+### 4) Workspace Resolution
 
 **Location:** `src/lib/workspace-path.ts`
 
-MoltBoard resolves the workspace directory in this order:
+Workspace path resolution order:
 
-1. `MOLTBOT_WORKSPACE` environment variable
-2. `WORKSPACE_DIR` environment variable
-3. `~/.clawdbot/clawdbot.json` → `agents.defaults.workspace` (current)
-4. `~/.moltbot/moltbot.json` → `agents.defaults.workspace` (future)
-5. Default: `~/workspace`
+1. `MOLTBOT_WORKSPACE`
+2. `WORKSPACE_DIR`
+3. `~/.clawdbot/clawdbot.json` → `agents.defaults.workspace`
+4. `~/.moltbot/moltbot.json` → `agents.defaults.workspace`
+5. Fallback: `~/workspace`
 
-```typescript
-const CONFIG_PATHS = [
-  path.join(homedir(), ".clawdbot", "clawdbot.json"), // Current
-  path.join(homedir(), ".moltbot", "moltbot.json"), // Future
-];
+---
 
-export function getWorkspacePath(): string {
-  // 1. Check environment variables first
-  const env = process.env.MOLTBOT_WORKSPACE || process.env.WORKSPACE_DIR;
-  if (env?.trim()) return env.trim();
+## Runtime Services (macOS)
 
-  // 2. Check config files
-  for (const configPath of CONFIG_PATHS) {
-    try {
-      if (fs.existsSync(configPath)) {
-        const data = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        const workspace = data?.agents?.defaults?.workspace;
-        if (workspace?.trim()) return workspace.trim();
-      }
-    } catch {
-      /* continue */
-    }
-  }
+### Dashboard (LaunchAgent)
 
-  // 3. Fallback to default
-  return path.join(homedir(), "workspace");
-}
-```
+- The dashboard UI is typically run via a LaunchAgent plist (per-user).
+- Runs the Next.js app in production mode (`bun run start`).
+
+### Gateway (LaunchDaemon)
+
+- The gateway service is typically run via a system LaunchDaemon (`com.clawdbot.gateway2`).
+- Runs as the `agent` user for DB access isolation.
+- Serves the same Next.js app on port **5278**.
+
+### Cron Workers
+
+- Scheduled scripts run from `skills/task-manager/scripts`.
+- `recurring-work.js` is the primary task lifecycle worker.
+- `project-sync-cron.js` triggers GitHub sync.
 
 ---
 
 ## Data Flow
 
-### Task Creation
+### Task CRUD (UI)
 
 ```
-User Input → React Form → API Route → SQLite → Response → UI Update
-     │            │            │          │         │          │
-     └────────────┴────────────┴──────────┴─────────┴──────────┘
-                              ~50ms round trip
+User → UI Form → /api/tasks → SQLite → Response → SWR cache update
 ```
 
-1. User fills task form in browser
-2. React component calls `POST /api/tasks`
-3. API route validates input with Zod schema
-4. Database insert with auto-increment ID
-5. New task returned with generated fields
-6. SWR cache invalidated, UI re-renders
+- UI uses SWR for data fetching with optimistic updates.
+- API routes validate input and persist changes using the connection pool.
+
+### Drag & Drop (Status Changes)
+
+```
+Drag → Optimistic UI → PUT /api/tasks → Persist → Confirm/Rollback
+```
 
 ### GitHub Issue Sync
 
 ```
-Cron Trigger → API Route → GitHub API → Compare → SQLite → Log
-     │             │            │          │         │       │
-     └─────────────┴────────────┴──────────┴─────────┴───────┘
-                         ~2-5s per project
+Cron → POST /api/projects/[id]/sync → GitHub API → Compare → SQLite
 ```
 
-1. Cron job triggers every 15 minutes
-2. Calls `POST /api/projects/[id]/sync`
-3. Fetches issues from GitHub (paginated)
-4. Compares with existing tasks by `github_issue_id`
-5. Inserts new, updates changed, optionally closes
-6. Updates `last_synced_at` timestamp
-
-### Task Status Updates
+### Moltbot Assist (Research)
 
 ```
-Drag & Drop → Optimistic Update → API Call → Confirm/Rollback
-     │              │                 │              │
-     └──────────────┴─────────────────┴──────────────┘
-                    <100ms perceived latency
+UI → /api/clawdbot/research → CLI/gateway tool → Response → Task fields
 ```
 
-1. User drags task to new column
-2. UI immediately updates (optimistic)
-3. `PUT /api/tasks` with new status
-4. On success: mutation confirmed
-5. On failure: rollback to previous state
+The Assist route assembles full task context and returns structured suggestions (title, tags, dependencies, priority, notes) for mapping into the task editor.
 
 ---
 
@@ -288,462 +172,104 @@ Drag & Drop → Optimistic Update → API Call → Confirm/Rollback
 
 ### Error Handling
 
-All API routes use a unified error handler:
+All API routes use a unified error wrapper:
 
 ```typescript
-// src/lib/api-error-handler.ts
-export function withErrorHandling(
-  handler: () => Promise<NextResponse>,
-  options: { context: { route: string; method: string } },
-): () => Promise<NextResponse> {
-  return async () => {
-    try {
-      return await handler();
-    } catch (error) {
-      logError(error, options.context);
+import { withErrorHandling } from "@/lib/api-error-handler";
 
-      if (error instanceof ValidationError) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
-      }
-
-      if (error instanceof DatabaseError) {
-        return NextResponse.json({ error: "Database error" }, { status: 500 });
-      }
-
-      return NextResponse.json(
-        { error: "Internal server error" },
-        { status: 500 },
-      );
-    }
-  };
-}
+export const GET = withErrorHandling(async () => {
+  // ...
+});
 ```
 
-### Request Validation
+### Validation
 
-Input validation using TypeScript types:
-
-```typescript
-// Task creation validation
-interface CreateTaskInput {
-  text: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  tags?: string[];
-  project_id?: number;
-}
-
-// Validated at runtime in API routes
-function validateTaskInput(body: unknown): CreateTaskInput {
-  if (!body || typeof body !== "object") {
-    throw new ValidationError("Invalid request body");
-  }
-  if (!("text" in body) || typeof body.text !== "string") {
-    throw new ValidationError("Task text is required");
-  }
-  // ... additional validation
-}
-```
+Routes validate inputs with explicit checks or schemas before DB operations.
 
 ---
 
-## CLI Tools
-
-### Task Manager CLI
-
-**Location:** `skills/task-manager/scripts/db-tasks.js`
-
-Direct database access for command-line task management:
-
-```javascript
-// Usage patterns
-const commands = {
-  list: (filter) => {
-    // SELECT with optional WHERE clause
-    // Format output with status markers
-  },
-  add: (text, status) => {
-    // INSERT new task
-    // Return task ID
-  },
-  update: (pattern, status) => {
-    // Find by text pattern or ID
-    // UPDATE status
-  },
-  complete: (pattern) => {
-    // Mark as completed
-    // Update tasks blocked by this one
-  },
-  delete: (pattern) => {
-    // Remove task
-    // Cascade blocked_by references
-  },
-  count: () => {
-    // GROUP BY status
-    // Return counts
-  },
-};
-```
-
-### Background Workers
+## CLI + Automation
 
 **Location:** `skills/task-manager/scripts/`
 
-#### Cron Worker (`cron-worker.sh`)
+- `recurring-work.js` - Main task lifecycle worker.
+- `project-sync-cron.js` - Calls the GitHub sync API.
+- `add-work-note.js` - Appends timestamped work notes (do not write to `tasks.work_notes` directly).
+- `db-tasks.js` - Direct task operations for CLI usage.
 
-Orchestrates periodic tasks:
-
-```bash
-#!/bin/bash
-# Runs every 3 minutes via crontab
-
-# Phase 0: Backup workspace
-./backup.sh || true
-
-# Phase 1: Process tasks
-bun ./recurring-work.js
-```
-
-#### Backup Script (`backup.sh`)
-
-Workspace state preservation:
-
-```bash
-#!/bin/bash
-# Backs up workspace to recovery repo
-
-# 1. Detect workspace from config
-WORKSPACE=$(get_workspace_dir)
-
-# 2. Copy database files
-cp $WORKSPACE/data/tasks.db* ./data/
-
-# 3. Exclude remote-backed projects
-for project in $WORKSPACE/projects/*; do
-    if has_remote_origin "$project"; then
-        add_to_gitignore "$project"
-    fi
-done
-
-# 4. Commit changes
-git add -A
-git commit -m "backup($(date)): +$added ~$modified"
-git push origin main
-```
-
-#### Project Sync (`project-sync-cron.js`)
-
-Automated GitHub synchronization:
-
-```javascript
-// Runs every 15 minutes
-async function syncAllProjects() {
-  const projects = db
-    .prepare(
-      `
-        SELECT id, name, github_repo_url
-        FROM projects
-        WHERE github_repo_url IS NOT NULL
-    `,
-    )
-    .all();
-
-  for (const project of projects) {
-    try {
-      const response = await fetch(
-        `http://localhost:5278/api/projects/${project.id}/sync`,
-        { method: "POST" },
-      );
-      const result = await response.json();
-      log(
-        `${project.name}: ${result.created} created, ${result.updated} updated`,
-      );
-    } catch (error) {
-      log(`${project.name}: sync failed - ${error.message}`);
-    }
-  }
-}
-```
+Cron entrypoint: `skills/task-manager/scripts/cron-worker.sh` (invokes backups + recurring work).
 
 ---
 
-## Frontend Architecture
+## Security & Permissions
 
-### State Management
+- Local-only system; no public auth layer by default.
+- Sensitive values in `.env.local` (gitignored).
+- DB directory is owned by `agent` with mode `700` for isolation.
+- Other users must access data through API routes or CLI scripts.
 
-Uses SWR for data fetching with optimistic updates:
+Access matrix:
 
-```typescript
-// src/app/(dashboard)/tasks/lib/use-tasks.ts
-export function useTasks() {
-  const { data, error, mutate } = useSWR<Task[]>("/api/tasks", fetcher, {
-    refreshInterval: 10000,
-  });
-
-  const updateTask = async (id: number, updates: Partial<Task>) => {
-    // Optimistic update
-    mutate(
-      (tasks) => tasks?.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-      false,
-    );
-
-    try {
-      await fetch("/api/tasks", {
-        method: "PUT",
-        body: JSON.stringify({ id, ...updates }),
-      });
-      mutate(); // Revalidate
-    } catch {
-      mutate(); // Rollback on error
-    }
-  };
-
-  return { tasks: data, error, updateTask };
-}
-```
-
-### Component Structure
-
-```
-components/
-├── ui/
-│   ├── button.tsx          # Base button component
-│   ├── card.tsx            # Card container
-│   ├── dialog.tsx          # Modal dialogs
-│   ├── badge.tsx           # Status badges
-│   ├── input.tsx           # Form inputs
-│   ├── select.tsx          # Dropdown selects
-│   ├── progress.tsx        # Progress bars
-│   ├── skeleton.tsx        # Loading skeletons
-│   ├── sonner.tsx          # Toast notifications
-│   ├── kanban-board.tsx    # Drag-and-drop board
-│   ├── work-notes.tsx      # Work notes panel
-│   └── delete-button.tsx   # Confirmation delete
-└── dashboard/
-    └── Sidebar.tsx         # Navigation sidebar
-```
-
-### Styling
-
-Tailwind CSS 4 with CSS variables for theming:
-
-```css
-/* src/app/globals.css */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
-  /* ... */
-}
-
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  /* ... */
-}
-```
+| User | DB Access | Mechanism |
+|------|-----------|-----------|
+| `agent` | Read + Write | Owns data directory |
+| `clawdbot` | None | Permission denied |
+| Subagents | API only | API routes / CLI bridge |
 
 ---
 
-## Security Considerations
-
-### Environment Variables
-
-Sensitive configuration stored in `.env.local` (gitignored):
-
-```bash
-GITHUB_TOKEN=ghp_...      # Never commit
-GITHUB_OWNER=username     # Safe to share
-DATABASE_URL=./data/...   # Local path
-```
-
-### Database Security
-
-- Database directory owned by `agent` user with mode `700`
-- Gateway runs as `agent` user via LaunchDaemon (read/write access)
-- `clawdbot` user and subagents have no direct DB access
-- All task mutations go through API → CLI scripts bridge
-- WAL mode prevents corruption from crashes
-
-### API Security
-
-- No authentication required (local-only design)
-- CORS restricted to localhost
-- Input validation on all endpoints
-
----
-
-## Performance
-
-### Database
-
-- Connection pooling (5 connections)
-- WAL mode for concurrent access
-- Indexed columns: `status`, `project_id`, `github_issue_id`
-
-### Frontend
-
-- SWR caching with 10s refresh interval
-- Optimistic updates for instant feedback
-- Code splitting via Next.js App Router
-- Static assets served from `/public`
-
-### API
-
-- Streaming responses where applicable
-- Pagination for large result sets
-- Rate limit awareness for GitHub API
-
----
-
-## Deployment
+## Operations
 
 ### Development
 
 ```bash
-bun run dev     # Port 5278, hot reload
+bun install
+bun run dev
 ```
 
 ### Production
 
 ```bash
-bun run build   # Create optimized build
-bun run start   # Serve production build
+bun run build
+bun run start
 ```
 
-### As a Service (macOS)
-
-The gateway runs as the `agent` user for database isolation. Create a **LaunchDaemon** (system-level):
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.clawdbot.gateway2</string>
-    <key>UserName</key>
-    <string>agent</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/Users/clawdbot/.bun/bin/bun</string>
-        <string>run</string>
-        <string>start</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>/Users/clawdbot/workspace/projects/moltboard</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PORT</key>
-        <string>5278</string>
-        <key>HOME</key>
-        <string>/Users/clawdbot</string>
-        <key>PATH</key>
-        <string>/Users/clawdbot/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/clawdbot-gateway.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/clawdbot-gateway.err</string>
-</dict>
-</plist>
-```
-
-Install:
+### Health Checks
 
 ```bash
-# Copy to system LaunchDaemons
-sudo cp com.clawdbot.gateway2.plist /Library/LaunchDaemons/
-
-# Set DB permissions (agent owns, others denied)
-sudo chown -R agent:staff /Users/clawdbot/clawdbot/data
-sudo chmod 700 /Users/clawdbot/clawdbot/data
-
-# Load daemon
-sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
-```
-
-Manage:
-
-```bash
-# Stop
-sudo launchctl unload /Library/LaunchDaemons/com.clawdbot.gateway2.plist
-
-# Start
-sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
-
-# Check status
-ps aux | grep "bun.*start"
-```
-
----
-
-## Troubleshooting
-
-### Database Locked
-
-```bash
-# Check for zombie processes
-lsof data/tasks.db
-
-# Force close connections
-pkill -f "moltboard"
-```
-
-### GitHub Sync Failing
-
-```bash
-# Check rate limits
-curl -H "Authorization: token $GITHUB_TOKEN" \
-    https://api.github.com/rate_limit
-
-# Verify token scopes
-curl -H "Authorization: token $GITHUB_TOKEN" \
-    https://api.github.com/user
-```
-
-### Port Already in Use
-
-```bash
-# Find process on port 5278
-lsof -i :5278
-
-# Kill it
-kill -9 <PID>
+curl http://localhost:5278/api/status
+curl http://localhost:5278/api/status/database
 ```
 
 ---
 
 ## Monitoring
 
-### Logs
+- Dashboard logs: `logs/dashboard.log` (production) or console output (dev).
+- Cron logs: `/tmp/cron-worker.log`.
+- Gateway logs: `/tmp/clawdbot-gateway.log` and `/tmp/clawdbot-gateway.err`.
 
-- Development: Console output
-- Production: `logs/dashboard.log`
-- Cron workers: `/tmp/cron-worker.log`
+---
 
-### Health Checks
+## Troubleshooting
+
+### Port Already in Use
 
 ```bash
-# API health
-curl http://localhost:5278/api/status
-
-# Database health
-curl http://localhost:5278/api/status/database
+lsof -i :5278
+kill -9 <PID>
 ```
 
-### Metrics
+### Database Locked
 
-Access `/api/metrics` for:
+```bash
+lsof data/tasks.db
+pkill -f "moltboard"
+```
 
-- Task completion history (7 days)
-- Daily task counts
-- Status distribution
+### GitHub Sync Failing
+
+```bash
+curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/rate_limit
+curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user
+```
