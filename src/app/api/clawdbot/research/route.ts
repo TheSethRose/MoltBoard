@@ -159,6 +159,11 @@ async function callClawdbot(
     const localFlag = useLocal ? "--local " : "";
     const cmd = `${clawdbotPath} agent ${localFlag}--json --thinking ${thinkingLevel} --agent ${agentId} --session-id ${sessionId} --message "$(cat ${tempFile})" 2>&1`;
 
+    console.log(
+      `[clawdbot] invoke agentId=${agentId} sessionId=${sessionId} thinking=${thinkingLevel} local=${useLocal}`,
+    );
+    console.log(`[clawdbot] cmd=${cmd.replace(/\s+/g, " ")}`);
+
     let stdout = "";
     let stderr = "";
     const maxAttempts = 3;
@@ -169,6 +174,12 @@ async function callClawdbot(
           maxBuffer: 2 * 1024 * 1024, // 2MB buffer
           env: { ...process.env, NO_COLOR: "1" },
         }));
+        if (stderr) {
+          console.log(`[clawdbot] stderr=${stderr.substring(0, 2000)}`);
+        }
+        if (stdout) {
+          console.log(`[clawdbot] stdout=${stdout.substring(0, 2000)}`);
+        }
         break;
       } catch (execError) {
         const execErr = execError as {
