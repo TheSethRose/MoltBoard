@@ -396,26 +396,14 @@ async function main() {
     if (projectRoot) {
       console.log(`[WORKER] PROJECT: ${projectRoot}`);
     }
-    }
     if (currentTask.notes) {
-      console.log(
-        `Notes: ${currentTask.notes.substring(0, 200)}${currentTask.notes.length > 200 ? "..." : ""}`,
-      );
+      console.log(`[WORKER] NOTES: ${currentTask.notes.substring(0, 200).replace(/\n/g, " ")}${currentTask.notes.length > 200 ? "..." : ""}`);
     }
 
-    const recentNotes = parseWorkNotes(currentTask.work_notes).slice(-10);
-    if (recentNotes.length > 0) {
-      console.log("\nRecent Work Notes:");
-      recentNotes.forEach((note) => {
-        const author = note.author || "system";
-        const ts = note.timestamp || "";
-        const content = note.content || "";
-        console.log(`- [${author}] ${ts} ${content}`.trim());
-      });
-    }
-
-    // Check for work_notes/progress details
     const workNotes = parseWorkNotes(currentTask.work_notes);
+    console.log(`[WORKER] WORK_NOTES: ${workNotes.length} entries`);
+
+    // Add started note if no meaningful progress yet
     const meaningfulNotes = workNotes.filter((note) => {
       if (!note || typeof note.content !== "string") return false;
       const content = note.content;
@@ -433,77 +421,32 @@ async function main() {
       );
     }
 
+    // Check for stuck task
     if (minutesInProgress >= STUCK_THRESHOLD_MINUTES) {
-      console.log(`\n⚠️  STUCK TASK DETECTED`);
-      console.log(
-        `This task has been in progress for ${minutesInProgress} minutes.`,
-      );
-      console.log(`Progress entries: ${workNotes.length}`);
+      console.log(`[WORKER] STUCK: Task has been in-progress for ${minutesInProgress} min (threshold: ${STUCK_THRESHOLD_MINUTES})`);
 
       if (!hasProgressDetails) {
         const repoState = await getRepoChangeState(currentTask);
         if (repoState.hasRepo && (repoState.hasChanges || repoState.behind > 0)) {
+          console.log(`[WORKER] REPO_STATE: uncommitted=${repoState.hasChanges} behind=${repoState.behind}`);
           await apiClient.appendWorkNote(
             currentTask.id,
             `Stale check: repo has ${repoState.hasChanges ? "uncommitted changes" : ""}${repoState.hasChanges && repoState.behind > 0 ? " and " : ""}${repoState.behind > 0 ? `${repoState.behind} commit(s) behind origin` : ""}. Keeping in-progress.`,
             "system",
           );
         } else {
+          console.log(`[WORKER] REPO_STATE: no changes, no progress notes`);
           await apiClient.appendWorkNote(
             currentTask.id,
-            `Stale check: no progress notes after ${minutesInProgress} minutes and no repo changes. Agent should resume work in-place.`,
+            `Stale check: no progress notes after ${minutesInProgress} minutes and no repo changes.`,
             "system",
           );
         }
       }
-
-      if (!hasProgressDetails) {
-        console.log("\n⚠️  WARNING: No work_notes found!");
-        console.log("This task has no progress tracking. Before completing:");
-        console.log("1. Add work_notes entries documenting your progress");
-        console.log(
-          "2. Run: bun recurring-worker.js --complete-with-summary <task-id>",
-        );
-      }
-
-      console.log("");
-      console.log("=== AGENT INSTRUCTIONS ===");
-      console.log("1. Check if this task is actually complete");
-      console.log("2. If complete:");
-      if (hasProgressDetails) {
-        console.log(
-          "   - Run: bun recurring-worker.js --complete-with-summary " +
-            currentTask.id +
-            (REVIEW_STATUS ? ' --summary "<summary>"' : ""),
-        );
-        console.log(
-          REVIEW_STATUS
-            ? `   - This will prepend a "Final Summary" and move to ${REVIEW_STATUS}`
-            : '   - This will prepend a "Final Summary" and mark complete',
-        );
-      } else {
-        console.log("   - FIRST: Add work_notes entries documenting progress");
-        console.log(
-          "   - THEN: Run: bun recurring-worker.js --complete-with-summary " +
-            currentTask.id +
-            (REVIEW_STATUS ? ' --summary "<summary>"' : ""),
-        );
-      }
-      console.log(
-        "3. If not complete: continue working on it (stay in-progress)",
-      );
-      console.log("");
-      console.log("→ Do NOT pick up new ready tasks until this one is resolved.");
-    } else {
-      console.log("");
-      console.log(
-        `→ Complete this task before picking up a new one (${STUCK_THRESHOLD_MINUTES - minutesInProgress} min until stuck detection).`,
-      );
-      if (!hasProgressDetails) {
-        console.log("→ TIP: Add work_notes as you work for progress tracking.");
-      }
     }
 
+    console.log(`[WORKER] SKIP: Task already in-progress, not picking up new work`);
+    console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
