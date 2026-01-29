@@ -127,7 +127,13 @@ async function callClawdbot(
   prompt: string,
 ): Promise<{ success: boolean; response?: string; error?: string }> {
   const timeout = parseInt(process.env.CLAWDBOT_TIMEOUT || "120000", 10);
-  const thinkingLevel = process.env.CLAWDBOT_THINKING || "low";
+  const normalizeThinking = (raw: string | undefined) => {
+    const normalized = (raw || "").trim().toLowerCase();
+    const allowed = new Set(["off", "minimal", "low", "medium", "high"]);
+    if (allowed.has(normalized)) return normalized;
+    return "low";
+  };
+  const thinkingLevel = normalizeThinking(process.env.CLAWDBOT_THINKING);
   const agentId = process.env.CLAWDBOT_AGENT || "main";
   const sessionId = process.env.CLAWDBOT_SESSION_ID || "research";
 
