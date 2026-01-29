@@ -104,18 +104,19 @@ async function getModelConfig(): Promise<{
     const modelDetails = providerConfig?.models?.find((m) => m.id === modelName);
 
     // Build a custom Model object for pi-ai
-    const model: Model<"anthropic-messages"> = {
+    // Use type assertion since baseUrl is optional for the MiniMax provider
+    const model = {
       id: modelName,
       name: modelDetails?.name || modelName,
-      api: "anthropic-messages",
+      api: "anthropic-messages" as const,
       provider: provider,
-      baseUrl: providerConfig?.baseUrl,
+      baseUrl: providerConfig?.baseUrl || "",
       reasoning: false,
-      input: ["text"],
+      input: ["text" as const],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: modelDetails?.contextWindow || 200000,
       maxTokens: modelDetails?.maxTokens || 8192,
-    };
+    } satisfies Model<"anthropic-messages">;
 
     return { model, apiKey };
   } catch (error: unknown) {
@@ -219,74 +220,81 @@ RULES:
 };
 
 /**
- * Call Pi CLI with Clawdbot identity (model + API key from config).
+ * Call pi-ai complete() with Clawdbot identity (model + API key from config).
  */
-async function callPi(
+async function callPiAI(
   prompt: string,
 ): Promise<{ success: boolean; response?: string; error?: string }> {
-  const timeout = parseInt(process.env.CLAWDBOT_TIMEOUT || "120000", 10);
-  const secrets = await getClawdbotSecrets();
+  const modelConfig = await getModelConfig();
 
-  const model = secrets?.model || "anthropic/claude-sonnet-4-20250514";
-  const extraEnv = secrets?.env || {};
+  if (!modelConfig) {
+    return {
+      success: false,
+      error: "Failed to load Clawdbot model configuration",
+    };
+  }
 
+  const { model, apiKey } = modelConfig;
   const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY valid JSON. No markdown fences, no explanations, no text before or after the JSON.`;
-  const tempFile = path.join("/tmp", `pi-request-${Date.now()}.txt`);
 
   try {
-    await fs.writeFile(tempFile, wrappedPrompt, "utf-8");
+    console.log(`[PiAI] Calling model ${model.provider}/${model.id}...`);
 
-    const piPath = process.env.PI_PATH || "/opt/homebrew/bin/pi";
-    const cmd = `${piPath} -p "$(cat ${tempFile})" --model ${model} 2>&1`;
+    const now = Date.now();
+    const context: Context = {
+      messages: [
+        {
+          role: "user",
+          content: wrappedPrompt,
+          timestamp: now,
+        },
+      ],
+    };
 
-    console.log(`[DirectAPI] Running pi as ${model}...`);
-
-    const { stdout, stderr } = await execAsync(cmd, {
-      timeout,
-      maxBuffer: 2 * 1024 * 1024,
-      env: {
-        ...process.env,
-        ...extraEnv,
-        NO_COLOR: "1",
-      },
+    const result = await complete(model, context, {
+      apiKey,
+      maxTokens: 4096,
+      systemPrompt: "You are a helpful assistant that outputs only valid JSON.",
     });
 
-    const output = stdout || stderr || "";
-    if (stderr) {
-      console.log(`[DirectAPI] stderr=${stderr.substring(0, 500)}`);
-    }
-    if (stdout) {
-      console.log(`[DirectAPI] stdout=${stdout.substring(0, 500)}`);
+    if (!result.content || result.content.length === 0) {
+      return {
+        success: false,
+        error: "No content in response from pi-ai",
+      };
     }
 
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
+    // Extract text content from the response
+    const textContent = result.content
+      .filter(
+        (c): c is { type: "text"; text: string } => c.type === "text" && "text" in c,
+      )
+      .map((c) => c.text)
+      .join("");
+
+    if (!textContent) {
+      return {
+        success: false,
+        error: "No text content in response from pi-ai",
+      };
+    }
+
+    console.log(`[PiAI] Response length: ${textContent.length} chars`);
+
+    // Extract JSON from response
+    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return { success: true, response: jsonMatch[0] };
     }
 
     return {
       success: false,
-      error: `No JSON found in response: ${output.substring(0, 300)}`,
+      error: `No JSON found in response: ${textContent.substring(0, 300)}`,
     };
   } catch (error) {
-    const err = error as {
-      message?: string;
-      code?: string;
-      killed?: boolean;
-      stdout?: string;
-      stderr?: string;
-    };
-
-    if (err.killed) {
-      return { success: false, error: `Pi timed out after ${timeout}ms` };
-    }
-
-    const details = [err.message, err.stdout, err.stderr]
-      .filter(Boolean)
-      .join(" | ");
-    return { success: false, error: details || "Failed to call Pi CLI" };
-  } finally {
-    await fs.unlink(tempFile).catch(() => {});
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[PiAI] Error: ${msg}`);
+    return { success: false, error: msg || "Failed to call pi-ai" };
   }
 }
 
@@ -361,12 +369,12 @@ export const POST = withErrorHandling(
       prompt = prompt.replace("{{NOTES}}", "(No additional notes provided)");
     }
 
-    // Call Pi
-    const piResult = await callPi(prompt);
+    // Call pi-ai
+    const piResult = await callPiAI(prompt);
 
     if (!piResult.success) {
       throw internalError(
-        piResult.error || "Failed to get response from Pi",
+        piResult.error || "Failed to get response from pi-ai",
         "PI_ERROR",
       );
     }
