@@ -142,7 +142,7 @@ async function callClawdbot(
   const gatewayUrl = (process.env.CLAWDBOT_GATEWAY_URL || "").trim();
   const gatewayToken = (process.env.CLAWDBOT_GATEWAY_TOKEN || "").trim();
   const gatewayTool =
-    (process.env.CLAWDBOT_GATEWAY_TOOL || "chat_send").trim() || "chat_send";
+    (process.env.CLAWDBOT_GATEWAY_TOOL || "message").trim() || "message";
 
   // Wrap prompt with JSON-only instruction
   const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
@@ -162,9 +162,8 @@ async function callClawdbot(
         tool: gatewayTool,
         sessionKey: sessionId,
         args: {
+          action: "send",
           sessionKey: sessionId,
-          agentId,
-          thinking: thinkingLevel,
           message: wrappedPrompt,
         },
       };
