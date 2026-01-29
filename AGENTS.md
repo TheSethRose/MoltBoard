@@ -2,6 +2,7 @@
 
 This file provides guidance to AI agents (Claude Code, Copilot, etc.) when working with code in this repository.
 
+
 ## Big Picture
 
 - **Next.js 16 App Router monolith**: UI pages in `src/app/(dashboard)` and API routes in `src/app/api`.
