@@ -49,6 +49,12 @@ export function useTaskMutations({
   mutate,
 }: UseTaskMutationsOptions): UseTaskMutationsReturn {
   const locallyModifiedTasks = useRef<Set<number>>(new Set());
+  const updateCache = useCallback(
+    (nextTasks: Task[]) => {
+      mutate({ tasks: nextTasks }, false);
+    },
+    [mutate],
+  );
 
   // Optimistic add - use negative temp ID, replace with real ID from response
   const addTask = useCallback(
@@ -77,7 +83,10 @@ export function useTaskMutations({
       };
 
       // Optimistic update
-      setTasks((prev) => [...prev, optimisticTask]);
+      const prevTasks = tasks;
+      const optimisticTasks = [...prevTasks, optimisticTask];
+      setTasks(optimisticTasks);
+      updateCache(optimisticTasks);
 
       try {
         const res = await fetch("/api/tasks", {
@@ -99,28 +108,26 @@ export function useTaskMutations({
         const { task: newTask } = await res.json();
 
         // Replace temp task with real task from DB
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === tempId
-              ? {
-                  ...newTask,
-                  tags: newTask.tags || [],
-                  blocked_by: newTask.blocked_by || [],
-                }
-              : t,
-          ),
+        const syncedTasks = optimisticTasks.map((t) =>
+          t.id === tempId
+            ? {
+                ...newTask,
+                tags: newTask.tags || [],
+                blocked_by: newTask.blocked_by || [],
+              }
+            : t,
         );
-
-        // Update SWR cache
-        mutate();
+        setTasks(syncedTasks);
+        updateCache(syncedTasks);
         toast.success("Task added successfully");
       } catch {
         // Rollback on error
-        setTasks((prev) => prev.filter((t) => t.id !== tempId));
+        setTasks(prevTasks);
+        updateCache(prevTasks);
         toast.error("Failed to add task");
       }
     },
-    [setTasks, mutate],
+    [tasks, setTasks, updateCache],
   );
 
   // Quick add - add to specified status with defaults
@@ -135,20 +142,30 @@ export function useTaskMutations({
   const deleteTask = useCallback(
     async (id: number) => {
       const prevTasks = tasks;
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+      let updatedTasks: Task[] | null = null;
+      setTasks((prev) => {
+        updatedTasks = prev.filter((t) => t.id !== id);
+        return updatedTasks;
+      });
+      if (updatedTasks) {
+        updateCache(updatedTasks);
+      }
 
       try {
         const res = await fetch(`/api/tasks?id=${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete");
-        // Update SWR cache
-        mutate();
+        // Update SWR cache without revalidation
+        if (updatedTasks) {
+          updateCache(updatedTasks);
+        }
         toast.success("Task deleted");
       } catch {
         setTasks(prevTasks);
+        updateCache(prevTasks);
         toast.error("Failed to delete task");
       }
     },
-    [tasks, setTasks, mutate],
+    [tasks, setTasks, updateCache],
   );
 
   // Optimistic move
@@ -158,9 +175,12 @@ export function useTaskMutations({
       fromStatus: Task["status"],
       toStatus: Task["status"],
     ) => {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: toStatus } : t)),
+      const prevTasks = tasks;
+      const updatedTasks = prevTasks.map((t) =>
+        t.id === taskId ? { ...t, status: toStatus } : t,
       );
+      setTasks(updatedTasks);
+      updateCache(updatedTasks);
       // Mark this task as locally modified so future refreshes preserve this change
       locallyModifiedTasks.current.add(taskId);
 
@@ -173,33 +193,32 @@ export function useTaskMutations({
         if (!res.ok) throw new Error("Failed to move");
         // Clear the local modification flag after successful sync
         locallyModifiedTasks.current.delete(taskId);
-        // Update SWR cache
-        mutate();
         toast.success("Task updated");
       } catch {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, status: fromStatus } : t)),
+        const rolledBackTasks = prevTasks.map((t) =>
+          t.id === taskId ? { ...t, status: fromStatus } : t,
         );
+        setTasks(rolledBackTasks);
+        updateCache(rolledBackTasks);
         // Revert the local modification flag on error
         locallyModifiedTasks.current.delete(taskId);
         toast.error("Failed to update task");
       }
     },
-    [setTasks, mutate],
+    [tasks, setTasks, updateCache],
   );
 
   // Optimistic reorder within column
   const reorderTasks = useCallback(
     async (status: Task["status"], taskIds: number[]) => {
       const prevTasks = tasks;
-
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.status !== status) return t;
-          const newOrder = taskIds.indexOf(t.id);
-          return newOrder !== -1 ? { ...t, order: newOrder * 10 } : t;
-        }),
-      );
+      const updatedTasks = prevTasks.map((t) => {
+        if (t.status !== status) return t;
+        const newOrder = taskIds.indexOf(t.id);
+        return newOrder !== -1 ? { ...t, order: newOrder * 10 } : t;
+      });
+      setTasks(updatedTasks);
+      updateCache(updatedTasks);
 
       try {
         const res = await fetch("/api/tasks", {
@@ -208,14 +227,13 @@ export function useTaskMutations({
           body: JSON.stringify({ status, taskIds }),
         });
         if (!res.ok) throw new Error("Failed to reorder");
-        // Update SWR cache
-        mutate();
       } catch {
         setTasks(prevTasks);
+        updateCache(prevTasks);
         toast.error("Failed to reorder tasks");
       }
     },
-    [tasks, setTasks, mutate],
+    [tasks, setTasks, updateCache],
   );
 
   // Optimistic edit
@@ -232,24 +250,23 @@ export function useTaskMutations({
     ) => {
       const prevTask = tasks.find((t) => t.id === id);
       const statusChanged = prevTask && prevTask.status !== status;
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === id
-            ? {
-                ...t,
-                text,
-                status,
-                tags,
-                priority,
-                notes,
-                blocked_by: blockedBy,
-                project_id: projectId,
-                work_notes: t.work_notes || [],
-              }
-            : t,
-        ),
+      const updatedTasks = tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              text,
+              status,
+              tags,
+              priority,
+              notes,
+              blocked_by: blockedBy,
+              project_id: projectId,
+              work_notes: t.work_notes || [],
+            }
+          : t,
       );
+      setTasks(updatedTasks);
+      updateCache(updatedTasks);
 
       // Mark as locally modified if status changed
       if (statusChanged) {
@@ -274,18 +291,20 @@ export function useTaskMutations({
         if (!res.ok) throw new Error("Failed to save");
         // Clear the local modification flag after successful sync
         locallyModifiedTasks.current.delete(id);
-        // Update SWR cache
-        mutate();
         toast.success("Task saved");
       } catch {
         if (prevTask) {
-          setTasks((prev) => prev.map((t) => (t.id === id ? prevTask : t)));
+          const rolledBackTasks = tasks.map((t) =>
+            t.id === id ? prevTask : t,
+          );
+          setTasks(rolledBackTasks);
+          updateCache(rolledBackTasks);
         }
         locallyModifiedTasks.current.delete(id);
         toast.error("Failed to update task");
       }
     },
-    [tasks, setTasks, mutate],
+    [tasks, setTasks, updateCache],
   );
 
   return {

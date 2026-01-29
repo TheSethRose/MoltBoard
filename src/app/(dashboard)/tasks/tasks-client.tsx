@@ -62,7 +62,7 @@ export function TasksClient({
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     dedupingInterval: 2000,
-    refreshInterval: 5000,
+    refreshInterval: 0,
   };
 
   // Use SWR for real-time updates after initial hydration
