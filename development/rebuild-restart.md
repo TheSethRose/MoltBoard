@@ -20,17 +20,13 @@ The Next.js build must be performed as the `agent` user so it can read the datab
 
 ## Relaunch dashboard (LaunchAgent)
 
-1) Stop the dashboard LaunchAgent:
-- `launchctl bootout gui/$(id -u) /Users/clawdbot/Library/LaunchAgents/com.moltbot.dashboard.plist 2>/dev/null || true`
-
-2) Start it again:
-- `launchctl bootstrap gui/$(id -u) /Users/clawdbot/Library/LaunchAgents/com.moltbot.dashboard.plist`
+1) Restart the dashboard LaunchAgent:
+- `bun run plist:dashboard:restart`
 
 ## Relaunch gateway (LaunchDaemon)
 
 1) Restart the gateway LaunchDaemon:
-- `sudo launchctl unload /Library/LaunchDaemons/com.clawdbot.gateway2.plist`
-- `sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist`
+- `bun run plist:gateway:restart`
 
 ## Quick verification
 

@@ -1,6 +1,7 @@
 #!/bin/bash
-# Dashboard startup script
+# Dashboard startup script (legacy)
 # Runs Next.js dev server on port 5278 in background
+# Prefer launchctl via scripts/manage-launchctl.sh for production restarts.
 
 cd "$(dirname "$0")"
 

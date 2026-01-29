@@ -1,6 +1,7 @@
 #!/bin/bash
-# MoltBoard Startup Script
+# MoltBoard Startup Script (legacy)
 # Run on login or manually
+# Prefer launchctl via scripts/manage-launchctl.sh for production restarts.
 
 get_workspace_dir() {
     python3 - <<'PY'
