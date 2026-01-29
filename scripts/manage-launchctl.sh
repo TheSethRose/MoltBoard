@@ -60,6 +60,11 @@ manage_dashboard() {
     local plist_path
     plist_path=$(find_dashboard_plist "$@")
 
+    rebuild_dashboard() {
+        sudo rm -rf "$REPO_ROOT/.next"
+        sudo -u agent -H bash -lc "cd \"$REPO_ROOT\" && bun run build"
+    }
+
     case "$action" in
         start)
             launchctl bootstrap "gui/$(id -u)" "$plist_path"
@@ -68,6 +73,14 @@ manage_dashboard() {
             launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
             ;;
         restart)
+            launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
+            launchctl bootstrap "gui/$(id -u)" "$plist_path"
+            ;;
+        rebuild)
+            rebuild_dashboard
+            ;;
+        rebuild-restart)
+            rebuild_dashboard
             launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
             launchctl bootstrap "gui/$(id -u)" "$plist_path"
             ;;

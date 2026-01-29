@@ -21,12 +21,12 @@ The Next.js build must be performed as the `agent` user so it can read the datab
 ## Relaunch dashboard (LaunchAgent)
 
 1) Restart the dashboard LaunchAgent:
-- `bun run plist:dashboard:restart`
+- `bun run dashboard:restart`
 
 ## Relaunch gateway (LaunchDaemon)
 
 1) Restart the gateway LaunchDaemon:
-- `bun run plist:gateway:restart`
+- `bun run gateway:restart`
 
 ## Quick verification
 
