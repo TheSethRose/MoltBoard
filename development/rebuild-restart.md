@@ -12,11 +12,8 @@ This document explains how to rebuild and relaunch both the dashboard and the Mo
 
 The Next.js build must be performed as the `agent` user so it can read the database.
 
-1) Remove the existing build output (may have mixed ownership):
-- `sudo rm -rf /Users/clawdbot/workspace/projects/moltboard/.next`
-
-2) Build as `agent`:
-- `sudo -u agent -H bash -lc 'cd /Users/clawdbot/workspace/projects/moltboard && bun run build'`
+1) Rebuild (handles sudo + agent user):
+- `bun run dashboard:rebuild`
 
 ## Relaunch dashboard (LaunchAgent)
 

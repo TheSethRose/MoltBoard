@@ -20,6 +20,8 @@
     "dashboard:stop": "bash scripts/manage-launchctl.sh dashboard stop",
     "dashboard:restart": "bash scripts/manage-launchctl.sh dashboard restart",
     "dashboard:status": "bash scripts/manage-launchctl.sh dashboard status",
+    "dashboard:rebuild": "bash scripts/manage-launchctl.sh dashboard rebuild",
+    "dashboard:rebuild-restart": "bash scripts/manage-launchctl.sh dashboard rebuild-restart",
     "gateway:start": "bash scripts/manage-launchctl.sh gateway start",
     "gateway:stop": "bash scripts/manage-launchctl.sh gateway stop",
     "gateway:restart": "bash scripts/manage-launchctl.sh gateway restart",
