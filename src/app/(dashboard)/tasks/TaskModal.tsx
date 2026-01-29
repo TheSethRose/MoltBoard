@@ -405,7 +405,6 @@ export function TaskModal({
     content: string,
     options?: { author?: WorkNote["author"]; skipAI?: boolean },
   ) => {
-    if (!task) return;
 
     const author = options?.author ?? "human";
 
@@ -417,35 +416,40 @@ export function TaskModal({
     };
 
     // Optimistic update
-    const updatedNotes = [...(task.work_notes || []), newNote];
-    const updatedTask = { ...task, work_notes: updatedNotes };
+    const baseNotes = (task?.work_notes || workNotes || []) as WorkNote[];
+    const updatedNotes = [...baseNotes, newNote];
+    const updatedTask = task ? { ...task, work_notes: updatedNotes } : null;
     setWorkNotes(updatedNotes);
 
     // Update local state
-    onSave(
-      task.id,
-      updatedTask.text,
-      updatedTask.status,
-      updatedTask.tags || [],
-      updatedTask.priority || undefined,
-      updatedTask.notes || "",
-      updatedTask.blocked_by || [],
-      updatedTask.project_id || null,
-    );
+    if (task && updatedTask) {
+      onSave(
+        task.id,
+        updatedTask.text,
+        updatedTask.status,
+        updatedTask.tags || [],
+        updatedTask.priority || undefined,
+        updatedTask.notes || "",
+        updatedTask.blocked_by || [],
+        updatedTask.project_id || null,
+      );
+    }
 
     // Also call API to append the note
-    try {
-      await fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: task.id,
-          work_notes: newNote,
-          append_work_note: true,
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to save work note:", err);
+    if (task) {
+      try {
+        await fetch("/api/tasks", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: task.id,
+            work_notes: newNote,
+            append_work_note: true,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to save work note:", err);
+      }
     }
 
     const shouldReview = author === "human" && !options?.skipAI;
@@ -466,15 +470,17 @@ export function TaskModal({
 
       setWorkNotes((prev) => [...(prev || []), agentNote]);
 
-      await fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: task.id,
-          work_notes: agentNote,
-          append_work_note: true,
-        }),
-      });
+      if (task) {
+        await fetch("/api/tasks", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: task.id,
+            work_notes: agentNote,
+            append_work_note: true,
+          }),
+        });
+      }
     } catch (err) {
       console.error("Failed to generate AI note review:", err);
     }
@@ -824,9 +830,9 @@ export function TaskModal({
           {/* Right column: Activity Log */}
           <div className="border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6 flex flex-col min-h-[280px] md:flex-[2_1_0%] md:min-w-0 md:min-h-0">
             <WorkNotes
-              notes={isEditMode ? workNotes || [] : []}
+              notes={workNotes || []}
               onAddNote={(content) => handleAddNote(content)}
-              disabled={!isEditMode}
+              disabled={false}
               className="flex-1 h-full min-h-0"
               enableClosureSummary={isEditMode && status === "completed"}
               taskTitle={task?.text || ""}
