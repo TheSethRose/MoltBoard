@@ -135,6 +135,15 @@ You must also allow any additional models in your Clawdbot or MoltBot config und
 }
 ```
 
+#### Sandboxing (Docker vs bare metal)
+
+Workers can run in a Docker sandbox or directly on the host:
+
+- **Docker sandbox** (recommended for isolation): set `agents.defaults.sandbox.mode` to `"non-main"` and use `sessionTarget: "isolated"` for worker jobs.
+- **Bare metal** (no Docker): set `agents.defaults.sandbox.mode` to `"off"` and use `sessionTarget: "main"` for worker jobs.
+
+See [docs/CRON-SETUP.md](docs/CRON-SETUP.md) for the exact job messages and wake modes.
+
 ```bash
 # Add the task worker cron job (runs every 3 minutes)
 moltbot cron add "Task Lifecycle Worker" "*/3 * * * *" \

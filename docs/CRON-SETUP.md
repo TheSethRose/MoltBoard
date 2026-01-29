@@ -9,9 +9,25 @@ This guide describes the current cron jobs stored in the Clawdbot gateway. The j
 - **Note:** Ensure `WORKER_*_MODEL` values are allowed by your gateway allowlist.
 - Set `--thinking high` to match the current worker configuration.
 
+## Sandboxing modes (Docker vs bare metal)
+
+Clawdbot can run worker jobs in two modes. Pick one and align the config + cron session target:
+
+- **Docker sandbox (recommended for isolation)**
+   - Requires Docker available to Clawdbot.
+   - Set `agents.defaults.sandbox.mode: "non-main"` in `~/.clawdbot/clawdbot.json`.
+   - Use `sessionTarget: "isolated"` for `agentTurn` jobs.
+
+- **Bare metal (no Docker)**
+   - Runs jobs directly on the host.
+   - Set `agents.defaults.sandbox.mode: "off"` in `~/.clawdbot/clawdbot.json`.
+   - Use `sessionTarget: "main"` for `agentTurn` jobs.
+
 ## Session + model rule
 
-Use **isolated** cron jobs for all workers except `workspace-backup` (which runs in `main`). Each run executes in `cron:<jobId>` and posts a summary to the main session.
+Each run executes in `cron:<jobId>` and posts a summary to the main session. Use the `sessionTarget` that matches your sandbox mode (see above).
+
+**Important:** `agentTurn` jobs must use `wakeMode: "next-heartbeat"` (not `"now"`). `wakeMode: "now"` only works for `payload.kind: "systemEvent"`.
 
 ## Intervals
 
