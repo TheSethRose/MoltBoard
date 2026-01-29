@@ -508,7 +508,6 @@ export function TaskModal({
         acceptanceText ? `## Acceptance Criteria\n${acceptanceText}` : "",
         dependenciesText ? `## Dependencies\n${dependenciesText}` : "",
         outOfScopeText ? `## Out of Scope\n${outOfScopeText}` : "",
-        `## Quality Review\n- Type: ${data.tags?.[0] || "task"}\n- Priority: ${data.priority}\n- Status: ${formatStatusLabel(status)}\n- Project: ${projectName || "none"}\n- Tags: ${data.tags.length > 0 ? data.tags.join(", ") : "none"}`,
       ]
         .filter(Boolean)
         .join("\n\n"),
