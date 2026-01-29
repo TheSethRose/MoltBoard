@@ -111,34 +111,29 @@ export function TasksClient({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [mutate]);
 
-  // Track if we've done initial sync from SWR data
-  const swrSynced = useRef(false);
-
-  // Sync SWR data into local state when it changes (after initial load)
+  // Sync SWR data into local state when it changes
   useEffect(() => {
-    if (data?.tasks && !swrSynced.current) {
-      swrSynced.current = true;
-      /* eslint-disable react-hooks/set-state-in-effect */
-      setTasks((prevTasks) => {
-        // Merge server tasks with local state, preserving local modifications
-        const mergedTasks = data.tasks.map((serverTask: Task) => {
-          const localTask = prevTasks.find((t) => t.id === serverTask.id);
-          if (localTask && locallyModifiedTasks.current.has(localTask.id)) {
-            return localTask;
-          }
-          return serverTask;
-        });
-
-        // Add any new local-only tasks (temporary tasks not yet saved)
-        const serverTaskIds = new Set(data.tasks.map((t: Task) => t.id));
-        const newLocalTasks = prevTasks.filter(
-          (t) => !serverTaskIds.has(t.id) && t.id < 0,
-        );
-
-        return [...mergedTasks, ...newLocalTasks];
+    if (!data?.tasks) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setTasks((prevTasks) => {
+      // Merge server tasks with local state, preserving local modifications
+      const mergedTasks = data.tasks.map((serverTask: Task) => {
+        const localTask = prevTasks.find((t) => t.id === serverTask.id);
+        if (localTask && locallyModifiedTasks.current.has(localTask.id)) {
+          return localTask;
+        }
+        return serverTask;
       });
-      /* eslint-enable react-hooks/set-state-in-effect */
-    }
+
+      // Add any new local-only tasks (temporary tasks not yet saved)
+      const serverTaskIds = new Set(data.tasks.map((t: Task) => t.id));
+      const newLocalTasks = prevTasks.filter(
+        (t) => !serverTaskIds.has(t.id) && t.id < 0,
+      );
+
+      return [...mergedTasks, ...newLocalTasks];
+    });
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [data?.tasks, locallyModifiedTasks]);
 
   // Bulk selection state

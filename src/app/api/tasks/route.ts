@@ -18,6 +18,9 @@ import {
 } from "@/lib/api-error-handler";
 import { TAG_COLORS } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // GET - List all tasks
 export const GET = withErrorHandling(
   async (req: NextRequest): Promise<NextResponse> => {

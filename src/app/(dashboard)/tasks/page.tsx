@@ -1,6 +1,9 @@
 import { getTasks } from "@/lib/tasks-server";
 import { TasksClient } from "./tasks-client";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * Server Component for the Tasks page.
  * Fetches initial task data on the server for SSR,
