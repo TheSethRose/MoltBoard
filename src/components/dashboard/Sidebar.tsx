@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LayoutList,
   Folder,
+  Settings,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: LayoutList },
   { href: "/projects", label: "Projects", icon: Folder },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());

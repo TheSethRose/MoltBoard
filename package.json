@@ -15,7 +15,15 @@
     "worker": "node scripts/recurring-work.js",
     "worker:start": "pm2 start scripts/recurring-work.js --name dashboard-worker",
     "worker:stop": "pm2 stop dashboard-worker",
-    "worker:logs": "pm2 logs dashboard-worker"
+    "worker:logs": "pm2 logs dashboard-worker",
+    "plist:dashboard:start": "bash scripts/manage-launchctl.sh dashboard start",
+    "plist:dashboard:stop": "bash scripts/manage-launchctl.sh dashboard stop",
+    "plist:dashboard:restart": "bash scripts/manage-launchctl.sh dashboard restart",
+    "plist:dashboard:status": "bash scripts/manage-launchctl.sh dashboard status",
+    "plist:gateway:start": "bash scripts/manage-launchctl.sh gateway start",
+    "plist:gateway:stop": "bash scripts/manage-launchctl.sh gateway stop",
+    "plist:gateway:restart": "bash scripts/manage-launchctl.sh gateway restart",
+    "plist:gateway:status": "bash scripts/manage-launchctl.sh gateway status"
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.50.3",
