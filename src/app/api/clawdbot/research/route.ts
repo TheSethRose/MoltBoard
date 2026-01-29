@@ -141,8 +141,19 @@ async function callClawdbot(
     "true";
   const gatewayUrl = (process.env.CLAWDBOT_GATEWAY_URL || "").trim();
   const gatewayToken = (process.env.CLAWDBOT_GATEWAY_TOKEN || "").trim();
-  const gatewayTool =
-    (process.env.CLAWDBOT_GATEWAY_TOOL || "message").trim() || "message";
+  const normalizeGatewayTool = (raw: string | undefined) => {
+    const normalized = (raw || "").trim().toLowerCase();
+    if (!normalized) return "message";
+    if (["send", "chat_send", "message.send"].includes(normalized)) {
+      return "message";
+    }
+    return normalized;
+  };
+  const gatewayTool = normalizeGatewayTool(process.env.CLAWDBOT_GATEWAY_TOOL);
+  const gatewayChannel =
+    (process.env.CLAWDBOT_GATEWAY_CHANNEL || "webchat").trim() || "webchat";
+  const gatewayTarget =
+    (process.env.CLAWDBOT_GATEWAY_TARGET || sessionId).trim() || sessionId;
 
   // Wrap prompt with JSON-only instruction
   const wrappedPrompt = `${prompt}\n\nIMPORTANT: Output ONLY the JSON object. No markdown fences, no explanations, no text before or after the JSON.`;
@@ -163,13 +174,14 @@ async function callClawdbot(
         sessionKey: sessionId,
         args: {
           action: "send",
-          sessionKey: sessionId,
+          channel: gatewayChannel,
+          target: gatewayTarget,
           message: wrappedPrompt,
         },
       };
 
       console.log(
-        `[clawdbot] gateway url=${gatewayUrl} tool=${gatewayTool} session=${sessionId} agent=${agentId} thinking=${thinkingLevel}`,
+        `[clawdbot] gateway url=${gatewayUrl} tool=${gatewayTool} session=${sessionId} agent=${agentId} thinking=${thinkingLevel} channel=${gatewayChannel} target=${gatewayTarget}`,
       );
 
       const response = await fetch(`${gatewayUrl}/tools/invoke`, {
