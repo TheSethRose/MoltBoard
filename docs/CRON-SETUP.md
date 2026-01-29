@@ -16,18 +16,18 @@ Clawdbot can run worker jobs in two modes. Pick one and align the config + cron 
 - **Docker sandbox (recommended for isolation)**
    - Requires Docker available to Clawdbot.
    - Set `agents.defaults.sandbox.mode: "non-main"` in `~/.clawdbot/clawdbot.json`.
-   - Use `sessionTarget: "isolated"` for `agentTurn` jobs.
+   - Use `sessionTarget: "isolated"` for `systemEvent` jobs.
 
 - **Bare metal (no Docker)**
    - Runs jobs directly on the host.
    - Set `agents.defaults.sandbox.mode: "off"` in `~/.clawdbot/clawdbot.json`.
-   - Use `sessionTarget: "main"` for `agentTurn` jobs.
+   - Use `sessionTarget: "main"` for `systemEvent` jobs.
 
-## Session + model rule
+## Session + payload rule
 
 Each run executes in `cron:<jobId>` and posts a summary to the main session. Use the `sessionTarget` that matches your sandbox mode (see above).
 
-**Important:** `agentTurn` jobs must use `wakeMode: "next-heartbeat"` (not `"now"`). `wakeMode: "now"` only works for `payload.kind: "systemEvent"`.
+**Important:** Jobs in `main` must use `payload.kind: "systemEvent"` and `wakeMode: "next-heartbeat"`.
 
 ## Intervals
 
@@ -53,7 +53,7 @@ All task mutations must go through the CLI scripts in the workspace (no direct s
 
 ### project-sync
 
-"Execute bun <WORKSPACE>/skills/task-manager/scripts/project-sync-cron.js. This job exists only to sync GitHub issues and must not modify code repositories or run any other script or command. After the command finishes, exit. If the command fails for any reason, output the exact error and exit immediately without any retries or additional actions."
+"Execute bun <WORKSPACE>/skills/task-manager/scripts/project-sync-cron.js. This job exists only to synchronize project metadata and GitHub issue configuration as defined by the script. Do not manually edit tasks or repositories outside of what the script performs. If any error occurs, report the exact error and exit immediately without running any other commands."
 
 ### Review Worker
 
@@ -65,7 +65,7 @@ All task mutations must go through the CLI scripts in the workspace (no direct s
 
 ### Coding Worker
 
-Execute bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js. Do not directly update the database. Do not call the tasks API directly for work_notes - always use <WORKSPACE>/skills/task-manager/scripts/add-work-note.js to avoid wiping existing notes. If a task is selected, perform the work only in the task's project repository and do not touch unrelated repositories or files. Append progress notes to work_notes during execution using 'bun <WORKSPACE>/skills/task-manager/scripts/add-work-note.js --task-id <taskId> --author agent --content "<progress update>"'. Use <WORKSPACE>/skills/task-manager/scripts/add-work-note.js to describe which files were touched and what was implemented in each (describe the change and where, do not list code). When complete, run 'bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js --complete-with-summary <taskId> --summary "<concise outcome and files changed>"'. If blocked, run 'bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js --block <taskId> --reason "<blocking issue>" --activity "<next step>"'. Exit after the completion or block command runs. If no eligible task, exit without changes.
+Execute bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js --auto. Do not directly update the database. Do not call the tasks API directly for work_notes - always use <WORKSPACE>/skills/task-manager/scripts/add-work-note.js to avoid wiping existing notes. If a task is selected, perform the work only in the task's project repository and do not touch unrelated repositories or files. Append progress notes to work_notes during execution using 'bun <WORKSPACE>/skills/task-manager/scripts/add-work-note.js --task-id <taskId> --author agent --content "<progress update>"'. Use <WORKSPACE>/skills/task-manager/scripts/add-work-note.js to describe which files were touched and what was implemented in each (describe the change and where, do not list code). When complete, run 'bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js --complete-with-summary <taskId> --summary "<concise outcome and files changed>"'. If blocked, run 'bun <WORKSPACE>/skills/task-manager/scripts/recurring-worker.js --block <taskId> --reason "<blocking issue>" --activity "<next step>"'. Exit after the completion or block command runs. If no eligible task, exit without changes.
 
 ## Add or edit jobs
 
