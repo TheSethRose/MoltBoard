@@ -16,13 +16,13 @@ if (isBun) {
 }
 
 // Generic database interface that works with both implementations
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export interface DatabaseType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prepare(sql: string): any;
   exec(sql: string): void;
   close(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   transaction<T>(fn: () => T): () => T;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;

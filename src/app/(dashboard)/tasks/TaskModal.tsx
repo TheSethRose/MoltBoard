@@ -480,6 +480,15 @@ export function TaskModal({
     const projectName = projectId
       ? projects.find((project) => project.id === projectId)?.name
       : null;
+    const findProjectMatch = (input: string) => {
+      if (!input) return null;
+      const normalizedInput = input.toLowerCase();
+      return (
+        projects.find((project) =>
+          normalizedInput.includes(project.name.toLowerCase()),
+        ) || null
+      );
+    };
     const formatList = (items: string[] | string, prefix = "- ") => {
       if (!items) return "";
       if (Array.isArray(items)) {
@@ -498,6 +507,25 @@ export function TaskModal({
       : data.scope || "";
     const dependenciesText = formatList(data.dependencies);
     const outOfScopeText = formatList(data.outOfScope);
+    const scopeTextRaw = Array.isArray(data.scope)
+      ? data.scope.join("\n")
+      : data.scope || "";
+    const projectContext = [
+      text,
+      notes,
+      data.title,
+      data.goal,
+      scopeTextRaw,
+      dependenciesText,
+      outOfScopeText,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const matchedProject = findProjectMatch(projectContext);
+    if (matchedProject) {
+      setProjectId(matchedProject.id);
+    }
 
     // Set the generated fields
     setText(data.title);
