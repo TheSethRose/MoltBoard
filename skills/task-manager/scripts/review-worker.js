@@ -149,7 +149,9 @@ async function requestChanges(taskId, summary, activity) {
       "system",
     );
   }
-  console.log(`[REVIEW] RESULT: Task #${taskNum} → ${TASK_STATUS.ready} (changes requested)`);
+  console.log(
+    `[REVIEW] RESULT: Task #${taskNum} → ${TASK_STATUS.ready} (changes requested)`,
+  );
 }
 
 async function main() {
@@ -174,12 +176,14 @@ async function main() {
 
   // Get all tasks via API
   const { tasks } = await apiClient.getTasks();
-  
+
   const reviewTasks = tasks
     .filter((t) => t.status === TASK_STATUS.review)
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
 
-  console.log(`[REVIEW] SCAN: Found ${reviewTasks.length} task(s) in review status`);
+  console.log(
+    `[REVIEW] SCAN: Found ${reviewTasks.length} task(s) in review status`,
+  );
 
   const nextTask = reviewTasks.find(
     (task) =>
@@ -188,21 +192,25 @@ async function main() {
   );
 
   if (!nextTask) {
-    console.log("[REVIEW] SKIP: No tasks need review (all have recent review notes or none available)");
+    console.log(
+      "[REVIEW] SKIP: No tasks need review (all have recent review notes or none available)",
+    );
     console.log(`[REVIEW] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
-  console.log(`[REVIEW] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(
+    `[REVIEW] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`,
+  );
   console.log(`[REVIEW] TITLE: ${nextTask.text}`);
-  
+
   if (nextTask.notes) {
     console.log(`[REVIEW] HAS_NOTES: yes (${nextTask.notes.length} chars)`);
   }
-  
+
   const notes = parseWorkNotes(nextTask.work_notes);
   console.log(`[REVIEW] WORK_NOTES: ${notes.length} entries`);
-  
+
   // Output the checklist for manual review
   console.log(`[REVIEW] CHECKLIST:`);
   console.log(`  1. git status -sb`);
@@ -210,8 +218,12 @@ async function main() {
   console.log(`  3. grep -n 'TODO|mock|placeholder' <files>`);
   console.log(`  4. Verify implementation complete`);
   console.log(`[REVIEW] COMMANDS:`);
-  console.log(`  Approve: bun review-worker.js --approve ${nextTask.id} --summary "<verified>"`);
-  console.log(`  Reject:  bun review-worker.js --request-changes ${nextTask.id} --summary "<issues>"`);
+  console.log(
+    `  Approve: bun review-worker.js --approve ${nextTask.id} --summary "<verified>"`,
+  );
+  console.log(
+    `  Reject:  bun review-worker.js --request-changes ${nextTask.id} --summary "<issues>"`,
+  );
   console.log(`[REVIEW] END: ${new Date().toISOString()}`);
 }
 

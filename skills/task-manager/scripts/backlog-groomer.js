@@ -86,9 +86,13 @@ async function markReady(taskId, summary, notesUpdate) {
   console.log(`[GROOMER] SUMMARY: ${summary}`);
 
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.ready);
-  
+
   if (notesUpdate) {
-    await apiClient.appendWorkNote(taskId, `groom:notes: ${notesUpdate}`, "system");
+    await apiClient.appendWorkNote(
+      taskId,
+      `groom:notes: ${notesUpdate}`,
+      "system",
+    );
     console.log(`[GROOMER] NOTES: ${notesUpdate}`);
   }
 
@@ -111,7 +115,7 @@ async function markBlocked(taskId, reason, activity) {
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.blocked);
   await apiClient.appendWorkNote(taskId, `groom:blocked: ${reason}`, "system");
   await apiClient.appendWorkNote(taskId, `status:blocked: ${reason}`, "system");
-  
+
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
     console.log(`[GROOMER] ACTIVITY: ${activity}`);
@@ -122,7 +126,7 @@ async function markBlocked(taskId, reason, activity) {
 
 async function main() {
   console.log(`[GROOMER] START: ${new Date().toISOString()}`);
-  
+
   const markReadyId = parseInt(getArgValue("--mark-ready") || "", 10);
   const markBlockedId = parseInt(getArgValue("--mark-blocked") || "", 10);
   const summaryArg = getArgValue("--summary");
@@ -144,14 +148,16 @@ async function main() {
 
   // Get all tasks via API
   const { tasks } = await apiClient.getTasks();
-  
+
   const backlogTasks = tasks
     .filter((t) => t.status === TASK_STATUS.backlog)
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 
   console.log(`[GROOMER] SCAN: Found ${backlogTasks.length} backlog task(s)`);
 
-  const nextTask = backlogTasks.find((task) => !hasGroomMarker(task.work_notes));
+  const nextTask = backlogTasks.find(
+    (task) => !hasGroomMarker(task.work_notes),
+  );
 
   if (!nextTask) {
     console.log("[GROOMER] SKIP: All backlog tasks already have groom markers");
@@ -159,9 +165,11 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`[GROOMER] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(
+    `[GROOMER] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`,
+  );
   console.log(`[GROOMER] TITLE: ${nextTask.text}`);
-  
+
   if (nextTask.notes) {
     console.log(`[GROOMER] HAS_NOTES: yes (${nextTask.notes.length} chars)`);
   } else {
@@ -176,16 +184,18 @@ async function main() {
   let summary;
   let groomReason;
 
-  const hasStructuredScope = nextTask.notes && (
-    nextTask.notes.includes("## Scope") ||
-    nextTask.notes.includes("## Target") ||
-    nextTask.notes.includes("## Summary") ||
-    nextTask.notes.includes("## Goal")
-  );
+  const hasStructuredScope =
+    nextTask.notes &&
+    (nextTask.notes.includes("## Scope") ||
+      nextTask.notes.includes("## Target") ||
+      nextTask.notes.includes("## Summary") ||
+      nextTask.notes.includes("## Goal"));
 
   if (hasStructuredScope) {
     // Extract structured section
-    const summaryMatch = nextTask.notes.match(/## (Summary|Scope|Target|Goal)[\s\S]*?(?=## |$)/i);
+    const summaryMatch = nextTask.notes.match(
+      /## (Summary|Scope|Target|Goal)[\s\S]*?(?=## |$)/i,
+    );
     summary = summaryMatch
       ? summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 300)
       : nextTask.text;

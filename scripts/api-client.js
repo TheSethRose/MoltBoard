@@ -1,10 +1,10 @@
 /**
  * API client for MoltBoard.
- * 
+ *
  * When scripts run inside a Docker sandbox, they cannot access the SQLite
  * database directly. This client provides HTTP-based access to the MoltBoard
  * API running on the host.
- * 
+ *
  * The client auto-detects whether it's running in Docker and adjusts the
  * base URL accordingly:
  * - Docker: http://host.docker.internal:5278
@@ -31,8 +31,7 @@ const IS_DOCKER = isDockerEnvironment();
 const DEFAULT_HOST = IS_DOCKER ? "host.docker.internal" : "localhost";
 const DEFAULT_PORT = process.env.MOLTBOARD_PORT || "5278";
 const BASE_URL =
-  process.env.MOLTBOARD_API_URL ||
-  `http://${DEFAULT_HOST}:${DEFAULT_PORT}`;
+  process.env.MOLTBOARD_API_URL || `http://${DEFAULT_HOST}:${DEFAULT_PORT}`;
 
 /**
  * Make an API request to MoltBoard.
@@ -218,7 +217,7 @@ export async function syncProject(id) {
   });
 }
 
-export default {
+const apiClientExports = {
   getTasks,
   getTask,
   createTask,
@@ -234,3 +233,5 @@ export default {
   BASE_URL,
   IS_DOCKER,
 };
+
+export default apiClientExports;

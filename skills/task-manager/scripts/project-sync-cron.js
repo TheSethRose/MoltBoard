@@ -7,7 +7,6 @@
  * Usage: node project-sync-cron.js
  */
 
-import path from "node:path";
 import { execSync } from "node:child_process";
 import { getDbPath } from "../../../scripts/workspace-path.js";
 

@@ -11,7 +11,6 @@ import {
   Info,
   ArrowUpDown,
   Filter,
-  ChevronDown,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

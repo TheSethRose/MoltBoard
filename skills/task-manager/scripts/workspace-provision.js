@@ -10,7 +10,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { getDbPath, getWorkspacePath } from "../../../scripts/workspace-path.js";
+import {
+  getDbPath,
+  getWorkspacePath,
+} from "../../../scripts/workspace-path.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();
 const DB_PATH = getDbPath();

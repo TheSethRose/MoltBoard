@@ -14,14 +14,14 @@ This guide describes the current cron jobs stored in the Clawdbot gateway. The j
 Clawdbot can run worker jobs in two modes. Pick one and align the config + cron session target:
 
 - **Docker sandbox (recommended for isolation)**
-   - Requires Docker available to Clawdbot.
-   - Set `agents.defaults.sandbox.mode: "non-main"` in `~/.clawdbot/clawdbot.json`.
-   - Use `sessionTarget: "isolated"` for `systemEvent` jobs.
+  - Requires Docker available to Clawdbot.
+  - Set `agents.defaults.sandbox.mode: "non-main"` in `~/.clawdbot/clawdbot.json`.
+  - Use `sessionTarget: "isolated"` for `systemEvent` jobs.
 
 - **Bare metal (no Docker)**
-   - Runs jobs directly on the host.
-   - Set `agents.defaults.sandbox.mode: "off"` in `~/.clawdbot/clawdbot.json`.
-   - Use `sessionTarget: "main"` for `systemEvent` jobs.
+  - Runs jobs directly on the host.
+  - Set `agents.defaults.sandbox.mode: "off"` in `~/.clawdbot/clawdbot.json`.
+  - Use `sessionTarget: "main"` for `systemEvent` jobs.
 
 ## Session + payload rule
 
@@ -94,6 +94,7 @@ The gateway runs as the `agent` user via a system LaunchDaemon. The database dir
    - Listens on port 5278
 
 2. **Database permissions**:
+
    ```bash
    # Directory owned by agent, mode 700 (no access for others)
    sudo chown -R agent:staff /Users/clawdbot/clawdbot/data

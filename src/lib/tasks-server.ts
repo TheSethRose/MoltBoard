@@ -12,9 +12,11 @@ const isBun = typeof Bun !== "undefined";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let DatabaseConstructor: any;
 if (isBun) {
-  DatabaseConstructor = require("bun:sqlite").Database;
+  const bunSqlite = await import("bun:sqlite");
+  DatabaseConstructor = bunSqlite.Database;
 } else {
-  DatabaseConstructor = require("better-sqlite3");
+  const betterSqlite3 = await import("better-sqlite3");
+  DatabaseConstructor = betterSqlite3.default;
 }
 
 const DB_PATH = getDbPath();

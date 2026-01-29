@@ -330,15 +330,18 @@ async function main() {
     backlog: filteredTasks.filter((t) => t.status === TASK_STATUS.backlog)
       .length,
     ready: filteredTasks.filter((t) => t.status === TASK_STATUS.ready).length,
-    in_progress: filteredTasks.filter((t) => t.status === TASK_STATUS.inProgress)
-      .length,
+    in_progress: filteredTasks.filter(
+      (t) => t.status === TASK_STATUS.inProgress,
+    ).length,
     blocked: filteredTasks.filter((t) => t.status === TASK_STATUS.blocked)
       .length,
     completed: filteredTasks.filter((t) => t.status === TASK_STATUS.completed)
       .length,
   };
 
-  console.log(`[WORKER] STATUS: backlog=${counts.backlog} ready=${counts.ready} in_progress=${counts.in_progress} blocked=${counts.blocked} completed=${counts.completed}`);
+  console.log(
+    `[WORKER] STATUS: backlog=${counts.backlog} ready=${counts.ready} in_progress=${counts.in_progress} blocked=${counts.blocked} completed=${counts.completed}`,
+  );
   if (PROJECT_FILTER && PROJECT_FILTER !== "all") {
     console.log(`[WORKER] FILTER: project=${PROJECT_FILTER}`);
   }
@@ -357,7 +360,11 @@ async function main() {
   const activityArg = getArgValue("--activity");
 
   if (completeTaskId) {
-    await completeWithSummary(completeTaskId, summaryArg, COMPLETE_TARGET_STATUS);
+    await completeWithSummary(
+      completeTaskId,
+      summaryArg,
+      COMPLETE_TARGET_STATUS,
+    );
     process.exit(0);
   }
 
@@ -390,14 +397,18 @@ async function main() {
     const minutesInProgress = Math.round((now - updatedAt) / 1000 / 60);
     const projectRoot = await getProjectRootForTask(currentTask);
 
-    console.log(`[WORKER] IN_PROGRESS: Task #${currentTask.task_number} (id=${currentTask.id})`);
+    console.log(
+      `[WORKER] IN_PROGRESS: Task #${currentTask.task_number} (id=${currentTask.id})`,
+    );
     console.log(`[WORKER] TITLE: ${currentTask.text}`);
     console.log(`[WORKER] DURATION: ${minutesInProgress} min`);
     if (projectRoot) {
       console.log(`[WORKER] PROJECT: ${projectRoot}`);
     }
     if (currentTask.notes) {
-      console.log(`[WORKER] NOTES: ${currentTask.notes.substring(0, 200).replace(/\n/g, " ")}${currentTask.notes.length > 200 ? "..." : ""}`);
+      console.log(
+        `[WORKER] NOTES: ${currentTask.notes.substring(0, 200).replace(/\n/g, " ")}${currentTask.notes.length > 200 ? "..." : ""}`,
+      );
     }
 
     const workNotes = parseWorkNotes(currentTask.work_notes);
@@ -423,12 +434,19 @@ async function main() {
 
     // Check for stuck task
     if (minutesInProgress >= STUCK_THRESHOLD_MINUTES) {
-      console.log(`[WORKER] STUCK: Task has been in-progress for ${minutesInProgress} min (threshold: ${STUCK_THRESHOLD_MINUTES})`);
+      console.log(
+        `[WORKER] STUCK: Task has been in-progress for ${minutesInProgress} min (threshold: ${STUCK_THRESHOLD_MINUTES})`,
+      );
 
       if (!hasProgressDetails) {
         const repoState = await getRepoChangeState(currentTask);
-        if (repoState.hasRepo && (repoState.hasChanges || repoState.behind > 0)) {
-          console.log(`[WORKER] REPO_STATE: uncommitted=${repoState.hasChanges} behind=${repoState.behind}`);
+        if (
+          repoState.hasRepo &&
+          (repoState.hasChanges || repoState.behind > 0)
+        ) {
+          console.log(
+            `[WORKER] REPO_STATE: uncommitted=${repoState.hasChanges} behind=${repoState.behind}`,
+          );
           await apiClient.appendWorkNote(
             currentTask.id,
             `Stale check: repo has ${repoState.hasChanges ? "uncommitted changes" : ""}${repoState.hasChanges && repoState.behind > 0 ? " and " : ""}${repoState.behind > 0 ? `${repoState.behind} commit(s) behind origin` : ""}. Keeping in-progress.`,
@@ -445,7 +463,9 @@ async function main() {
       }
     }
 
-    console.log(`[WORKER] SKIP: Task already in-progress, not picking up new work`);
+    console.log(
+      `[WORKER] SKIP: Task already in-progress, not picking up new work`,
+    );
     console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
@@ -458,7 +478,9 @@ async function main() {
   if (readyTasks.length === 0) {
     console.log("[WORKER] SKIP: No tasks in Ready queue");
     if (counts.backlog > 0) {
-      console.log(`[WORKER] NOTE: ${counts.backlog} task(s) in Backlog need grooming`);
+      console.log(
+        `[WORKER] NOTE: ${counts.backlog} task(s) in Backlog need grooming`,
+      );
     }
     console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
@@ -473,7 +495,9 @@ async function main() {
   const isAutoMode = process.argv.includes("--auto");
 
   if (isAutoMode && nextTask) {
-    console.log(`[WORKER] AUTO_PICKUP: Task #${nextTask.task_number} (id=${nextTask.id})`);
+    console.log(
+      `[WORKER] AUTO_PICKUP: Task #${nextTask.task_number} (id=${nextTask.id})`,
+    );
     console.log(`[WORKER] TITLE: ${nextTask.text}`);
 
     // Pick up the task
@@ -485,7 +509,9 @@ async function main() {
     );
 
     console.log(`[WORKER] ACTION: Picked up task`);
-    console.log(`[WORKER] RESULT: Task #${nextTask.task_number} → ${TASK_STATUS.inProgress}`);
+    console.log(
+      `[WORKER] RESULT: Task #${nextTask.task_number} → ${TASK_STATUS.inProgress}`,
+    );
     console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
@@ -495,14 +521,18 @@ async function main() {
     console.log("[WORKER] BLOCKED: All ready tasks have unmet dependencies");
     for (const task of readyTasks.slice(0, 5)) {
       const blockers = getIncompleteBlockers(task.blocked_by, filteredTasks);
-      console.log(`[WORKER]   #${task.task_number} blocked by: ${blockers.map((b) => `#${b.task_number}`).join(", ")}`);
+      console.log(
+        `[WORKER]   #${task.task_number} blocked by: ${blockers.map((b) => `#${b.task_number}`).join(", ")}`,
+      );
     }
     console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
   // Found an available task - display it (non-auto mode, for manual review)
-  console.log(`[WORKER] NEXT_TASK: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(
+    `[WORKER] NEXT_TASK: Task #${nextTask.task_number} (id=${nextTask.id})`,
+  );
   console.log(`[WORKER] TITLE: ${nextTask.text}`);
   console.log(`[WORKER] PRIORITY: ${nextTask.priority || "none"}`);
 
@@ -520,9 +550,10 @@ async function main() {
 
   if (nextTask.notes) {
     // Truncate notes to first 200 chars for summary
-    const notesSummary = nextTask.notes.length > 200 
-      ? nextTask.notes.slice(0, 200) + "..." 
-      : nextTask.notes;
+    const notesSummary =
+      nextTask.notes.length > 200
+        ? nextTask.notes.slice(0, 200) + "..."
+        : nextTask.notes;
     console.log(`[WORKER] NOTES: ${notesSummary.replace(/\n/g, " ")}`);
   }
 
@@ -539,7 +570,9 @@ async function main() {
   });
 
   if (waitingOnThis.length > 0) {
-    console.log(`[WORKER] UNBLOCKS: ${waitingOnThis.map(t => `#${t.task_number}`).join(", ")}`);
+    console.log(
+      `[WORKER] UNBLOCKS: ${waitingOnThis.map((t) => `#${t.task_number}`).join(", ")}`,
+    );
   }
 
   console.log(`[WORKER] HINT: Run with --auto to auto-pickup`);

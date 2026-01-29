@@ -1,4 +1,3 @@
-import path from "path";
 import { getDbPath } from "@/lib/workspace-path";
 import { Mutex } from "async-mutex";
 
@@ -9,20 +8,22 @@ const isBun = typeof Bun !== "undefined";
 let DatabaseConstructor: any;
 if (isBun) {
   // Dynamic import for bun:sqlite to avoid build-time errors
-  DatabaseConstructor = require("bun:sqlite").Database;
+  const bunSqlite = await import("bun:sqlite");
+  DatabaseConstructor = bunSqlite.Database;
 } else {
   // Use better-sqlite3 for Node.js (Next.js build workers)
-  DatabaseConstructor = require("better-sqlite3");
+  const betterSqlite3 = await import("better-sqlite3");
+  DatabaseConstructor = betterSqlite3.default;
 }
 
 // Generic database interface that works with both implementations
- 
+
 export interface DatabaseType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prepare(sql: string): any;
   exec(sql: string): void;
   close(): void;
-   
+
   transaction<T>(fn: () => T): () => T;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;

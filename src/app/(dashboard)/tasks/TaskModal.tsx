@@ -449,9 +449,10 @@ export function TaskModal({
     const statusLabel = status ? formatStatusLabel(status) : "unknown";
     const priorityLabel = priority || "none";
     const tagsLabel = tags.length > 0 ? tags.join(", ") : "none";
-    const blockedByLabel = blockedBy.length > 0
-      ? blockedBy.map((id) => `#${id}`).join(", ")
-      : "none";
+    const blockedByLabel =
+      blockedBy.length > 0
+        ? blockedBy.map((id) => `#${id}`).join(", ")
+        : "none";
     const activityLog = (workNotes || [])
       .slice(-5)
       .map((note) => {
@@ -477,9 +478,6 @@ export function TaskModal({
 
   // Handle research assistant completion - auto-fill form fields
   const handleResearchComplete = (data: TaskFormResponse) => {
-    const projectName = projectId
-      ? projects.find((project) => project.id === projectId)?.name
-      : null;
     const findProjectMatch = (input: string) => {
       if (!input) return null;
       const normalizedInput = input.toLowerCase();
@@ -492,7 +490,9 @@ export function TaskModal({
     const formatList = (items: string[] | string, prefix = "- ") => {
       if (!items) return "";
       if (Array.isArray(items)) {
-        return items.length > 0 ? items.map((item) => `${prefix}${item}`).join("\n") : "";
+        return items.length > 0
+          ? items.map((item) => `${prefix}${item}`).join("\n")
+          : "";
       }
       return items ? items : "";
     };

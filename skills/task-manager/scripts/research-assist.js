@@ -19,7 +19,6 @@
  * - Generates structured work notes for task details
  */
 
-import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { Database } from "bun:sqlite";

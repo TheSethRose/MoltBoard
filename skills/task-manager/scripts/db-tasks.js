@@ -3,7 +3,6 @@
  * SQLite-backed task manager CLI for agent use.
  * Commands: list, add, update, complete, delete, count
  */
-import path from "node:path";
 import fs from "node:fs";
 import { Database } from "bun:sqlite";
 import { getDbPath } from "../../../scripts/workspace-path.js";
