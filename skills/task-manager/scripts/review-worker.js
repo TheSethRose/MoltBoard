@@ -101,13 +101,20 @@ function hasCompletedReview(workNotes) {
 
 async function markApproved(taskId, summary, activity) {
   if (!summary) {
-    console.error("Summary is required (use --summary)");
+    console.error("[REVIEW] ERROR: Summary is required (use --summary)");
     return;
   }
+
+  const task = await apiClient.getTask({ id: taskId });
+  const taskNum = task?.task_number || taskId;
+
+  console.log(`[REVIEW] ACTION: Approving task #${taskNum}`);
+  console.log(`[REVIEW] SUMMARY: ${summary}`);
 
   await apiClient.appendWorkNote(taskId, `review:done: ${summary}`, "system");
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
+    console.log(`[REVIEW] ACTIVITY: ${activity}`);
   } else {
     await apiClient.appendWorkNote(
       taskId,
@@ -115,21 +122,26 @@ async function markApproved(taskId, summary, activity) {
       "system",
     );
   }
-  console.log(
-    `\n✓ Approved task #${taskId} → ${TASK_STATUS.review} (awaiting human)`,
-  );
+  console.log(`[REVIEW] RESULT: Task #${taskNum} approved → awaiting human`);
 }
 
 async function requestChanges(taskId, summary, activity) {
   if (!summary) {
-    console.error("Summary is required (use --summary)");
+    console.error("[REVIEW] ERROR: Summary is required (use --summary)");
     return;
   }
+
+  const task = await apiClient.getTask({ id: taskId });
+  const taskNum = task?.task_number || taskId;
+
+  console.log(`[REVIEW] ACTION: Requesting changes for task #${taskNum}`);
+  console.log(`[REVIEW] SUMMARY: ${summary}`);
 
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.ready);
   await apiClient.appendWorkNote(taskId, `review:failed: ${summary}`, "system");
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
+    console.log(`[REVIEW] ACTIVITY: ${activity}`);
   } else {
     await apiClient.appendWorkNote(
       taskId,
@@ -137,9 +149,7 @@ async function requestChanges(taskId, summary, activity) {
       "system",
     );
   }
-  console.log(
-    `\n✓ Requested changes for task #${taskId} → ${TASK_STATUS.ready}`,
-  );
+  console.log(`[REVIEW] RESULT: Task #${taskNum} → ${TASK_STATUS.ready} (changes requested)`);
 }
 
 async function main() {

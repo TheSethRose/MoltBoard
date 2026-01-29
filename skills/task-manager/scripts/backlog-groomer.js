@@ -75,25 +75,38 @@ function hasGroomMarker(workNotes) {
 
 async function markReady(taskId, summary, notesUpdate) {
   if (!summary) {
-    console.error("Summary is required (use --summary)");
+    console.error("[GROOMER] ERROR: Summary is required (use --summary)");
     return;
   }
+
+  const task = await apiClient.getTask({ id: taskId });
+  const taskNum = task?.task_number || taskId;
+
+  console.log(`[GROOMER] ACTION: Marking task #${taskNum} as ready`);
+  console.log(`[GROOMER] SUMMARY: ${summary}`);
 
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.ready);
   
   if (notesUpdate) {
     await apiClient.appendWorkNote(taskId, `groom:notes: ${notesUpdate}`, "system");
+    console.log(`[GROOMER] NOTES: ${notesUpdate}`);
   }
 
   await apiClient.appendWorkNote(taskId, `groom:done: ${summary}`, "system");
-  console.log(`\n✓ Groomed task #${taskId} → ${TASK_STATUS.ready}`);
+  console.log(`[GROOMER] RESULT: Task #${taskNum} → ${TASK_STATUS.ready}`);
 }
 
 async function markBlocked(taskId, reason, activity) {
   if (!reason) {
-    console.error("Block reason is required (use --reason)");
+    console.error("[GROOMER] ERROR: Block reason is required (use --reason)");
     return;
   }
+
+  const task = await apiClient.getTask({ id: taskId });
+  const taskNum = task?.task_number || taskId;
+
+  console.log(`[GROOMER] ACTION: Blocking task #${taskNum}`);
+  console.log(`[GROOMER] REASON: ${reason}`);
 
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.blocked);
   await apiClient.appendWorkNote(taskId, `groom:blocked: ${reason}`, "system");
@@ -101,12 +114,15 @@ async function markBlocked(taskId, reason, activity) {
   
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
+    console.log(`[GROOMER] ACTIVITY: ${activity}`);
   }
 
-  console.log(`\n✓ Blocked task #${taskId}: ${reason}`);
+  console.log(`[GROOMER] RESULT: Task #${taskNum} → ${TASK_STATUS.blocked}`);
 }
 
 async function main() {
+  console.log(`[GROOMER] START: ${new Date().toISOString()}`);
+  
   const markReadyId = parseInt(getArgValue("--mark-ready") || "", 10);
   const markBlockedId = parseInt(getArgValue("--mark-blocked") || "", 10);
   const summaryArg = getArgValue("--summary");
@@ -116,11 +132,13 @@ async function main() {
 
   if (markReadyId) {
     await markReady(markReadyId, summaryArg, notesArg);
+    console.log(`[GROOMER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
   if (markBlockedId) {
     await markBlocked(markBlockedId, reasonArg, activityArg);
+    console.log(`[GROOMER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
@@ -131,30 +149,27 @@ async function main() {
     .filter((t) => t.status === TASK_STATUS.backlog)
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 
+  console.log(`[GROOMER] SCAN: Found ${backlogTasks.length} backlog task(s)`);
+
   const nextTask = backlogTasks.find((task) => !hasGroomMarker(task.work_notes));
 
   if (!nextTask) {
-    console.log("=== No Backlog Tasks to Groom ===");
-    console.log("All backlog tasks already have grooming markers.");
+    console.log("[GROOMER] SKIP: All backlog tasks already have groom markers");
+    console.log(`[GROOMER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
-  console.log("=== Backlog Grooming ===");
-  console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+  console.log(`[GROOMER] SELECT: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(`[GROOMER] TITLE: ${nextTask.text}`);
+  
   if (nextTask.notes) {
-    console.log(`\nCurrent Notes:\n${nextTask.notes}`);
+    console.log(`[GROOMER] HAS_NOTES: yes (${nextTask.notes.length} chars)`);
+  } else {
+    console.log(`[GROOMER] HAS_NOTES: no`);
   }
 
   const notes = parseWorkNotes(nextTask.work_notes);
-  if (notes.length > 0) {
-    console.log("\nRecent Work Notes:");
-    notes.slice(-10).forEach((note) => {
-      const author = note.author || "system";
-      const ts = note.timestamp || "";
-      const content = note.content || "";
-      console.log(`- [${author}] ${ts} ${content}`.trim());
-    });
-  }
+  console.log(`[GROOMER] WORK_NOTES: ${notes.length} entries`);
 
   // Auto-groom: if task has clear scope in notes, auto-mark ready
   const hasScope = nextTask.notes && (
@@ -170,23 +185,19 @@ async function main() {
       ? `Plan: ${summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 200)}...`
       : `Review and implement: ${nextTask.text}`;
 
-    console.log("\n✓ Auto-grooming task with clear scope...");
+    console.log(`[GROOMER] AUTO_GROOM: Task has structured scope section`);
     await markReady(nextTask.id, summary);
+    console.log(`[GROOMER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
-  // Manual grooming required
-  console.log("\nInstructions:");
-  console.log("1) Research and clarify scope, acceptance, and dependencies.");
-  console.log("2) Update notes if needed (include plan + definition).");
-  console.log("3) Mark ready or blocked using one of the commands below.");
-  console.log("\nCommands:");
-  console.log(
-    `- Mark ready: bun backlog-groomer.js --mark-ready ${nextTask.id} --summary "<summary>" --notes "<append notes>"`,
-  );
-  console.log(
-    `- Block: bun backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<reason>" --activity "<activity log entry>"`,
-  );
+  // No auto-groom possible - output instructions for manual processing
+  console.log(`[GROOMER] MANUAL_REQUIRED: Task lacks structured scope (## Scope/Target/Summary)`);
+  console.log(`[GROOMER] INSTRUCTIONS:`);
+  console.log(`  1) Add scope/acceptance criteria to task notes`);
+  console.log(`  2) Then run: bun backlog-groomer.js --mark-ready ${nextTask.id} --summary "<plan>"`);
+  console.log(`  OR block: bun backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<why>"`);
+  console.log(`[GROOMER] END: ${new Date().toISOString()}`);
 }
 
 main().catch((err) => {

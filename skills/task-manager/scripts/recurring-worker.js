@@ -254,16 +254,21 @@ async function completeWithSummary(
 ) {
   const task = await apiClient.getTask({ id: taskId });
   if (!task) {
-    console.error(`Task #${taskId} not found`);
+    console.error(`[WORKER] ERROR: Task #${taskId} not found`);
     return;
   }
 
+  const taskNum = task.task_number || taskId;
+
   if (task.status !== TASK_STATUS.inProgress) {
     console.error(
-      `Task #${taskId} is not in-progress (current: ${task.status})`,
+      `[WORKER] ERROR: Task #${taskNum} is not in-progress (current: ${task.status})`,
     );
     return;
   }
+
+  console.log(`[WORKER] ACTION: Completing task #${taskNum}`);
+  console.log(`[WORKER] TARGET_STATUS: ${targetStatus}`);
 
   // Generate Final Summary note
   const statusLabel =
@@ -277,32 +282,40 @@ async function completeWithSummary(
   await apiClient.appendWorkNote(taskId, summaryContent, "system");
   await apiClient.updateTaskStatus(taskId, targetStatus);
 
-  console.log(`\n✓ Updated task #${task.task_number} with Final Summary`);
-  console.log(`  Final Summary: ${summaryContent}`);
+  console.log(`[WORKER] SUMMARY: ${summaryContent}`);
+  console.log(`[WORKER] RESULT: Task #${taskNum} → ${targetStatus}`);
 }
 
 async function blockTask(taskId, reason, activity) {
   const task = await apiClient.getTask({ id: taskId });
   if (!task) {
-    console.error(`Task #${taskId} not found`);
+    console.error(`[WORKER] ERROR: Task #${taskId} not found`);
     return;
   }
 
+  const taskNum = task.task_number || taskId;
+
   if (!reason) {
-    console.error("Block reason is required (use --reason)");
+    console.error("[WORKER] ERROR: Block reason is required (use --reason)");
     return;
   }
+
+  console.log(`[WORKER] ACTION: Blocking task #${taskNum}`);
+  console.log(`[WORKER] REASON: ${reason}`);
 
   await apiClient.appendWorkNote(taskId, `status:blocked: ${reason}`, "system");
   if (activity) {
     await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
+    console.log(`[WORKER] ACTIVITY: ${activity}`);
   }
   await apiClient.updateTaskStatus(taskId, TASK_STATUS.blocked);
 
-  console.log(`\n✓ Blocked task #${task.task_number}: ${reason}`);
+  console.log(`[WORKER] RESULT: Task #${taskNum} → ${TASK_STATUS.blocked}`);
 }
 
 async function main() {
+  console.log(`[WORKER] START: ${new Date().toISOString()}`);
+
   // Get all tasks via API
   const { tasks } = await apiClient.getTasks();
 
@@ -325,14 +338,10 @@ async function main() {
       .length,
   };
 
-  console.log("=== Task Status ===");
-  console.log(
-    `Backlog: ${counts.backlog} | Ready: ${counts.ready} | In Progress: ${counts.in_progress} | Blocked: ${counts.blocked} | Completed: ${counts.completed}`,
-  );
+  console.log(`[WORKER] STATUS: backlog=${counts.backlog} ready=${counts.ready} in_progress=${counts.in_progress} blocked=${counts.blocked} completed=${counts.completed}`);
   if (PROJECT_FILTER && PROJECT_FILTER !== "all") {
-    console.log(`(Filtered by project: ${PROJECT_FILTER})`);
+    console.log(`[WORKER] FILTER: project=${PROJECT_FILTER}`);
   }
-  console.log("");
 
   const completeTaskId = parseInt(
     getArgValue("--complete-with-summary") || "",
@@ -506,14 +515,11 @@ async function main() {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 
   if (readyTasks.length === 0) {
-    console.log("=== No Ready Tasks ===");
-    console.log("All caught up! No tasks in the Ready queue.");
-
+    console.log("[WORKER] SKIP: No tasks in Ready queue");
     if (counts.backlog > 0) {
-      console.log(
-        `\n${counts.backlog} task(s) waiting in Backlog. Move them to Ready when prepared.`,
-      );
+      console.log(`[WORKER] NOTE: ${counts.backlog} task(s) in Backlog need grooming`);
     }
+    console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
@@ -526,8 +532,8 @@ async function main() {
   const isAutoMode = process.argv.includes("--auto");
 
   if (isAutoMode && nextTask) {
-    console.log(`=== Auto-Pickup Mode ===`);
-    console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+    console.log(`[WORKER] AUTO_PICKUP: Task #${nextTask.task_number} (id=${nextTask.id})`);
+    console.log(`[WORKER] TITLE: ${nextTask.text}`);
 
     // Pick up the task
     await apiClient.updateTaskStatus(nextTask.id, TASK_STATUS.inProgress);
@@ -537,24 +543,20 @@ async function main() {
       "system",
     );
 
-    console.log(`\n✓ Picked up task #${nextTask.task_number}`);
-    console.log(`  Status: ${TASK_STATUS.ready} → ${TASK_STATUS.inProgress}`);
+    console.log(`[WORKER] ACTION: Picked up task`);
+    console.log(`[WORKER] RESULT: Task #${nextTask.task_number} → ${TASK_STATUS.inProgress}`);
+    console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
   if (!nextTask) {
     // All ready tasks are blocked
-    console.log("=== All Ready Tasks Blocked ===");
-    console.log("Tasks in Ready queue are waiting on dependencies:\n");
-
+    console.log("[WORKER] BLOCKED: All ready tasks have unmet dependencies");
     for (const task of readyTasks.slice(0, 5)) {
       const blockers = getIncompleteBlockers(task.blocked_by, filteredTasks);
-      console.log(`#${task.task_number}: ${task.text}`);
-      console.log(
-        `  Blocked by: ${blockers.map((b) => `#${b.task_number}`).join(", ")}`,
-      );
+      console.log(`[WORKER]   #${task.task_number} blocked by: ${blockers.map((b) => `#${b.task_number}`).join(", ")}`);
     }
-
+    console.log(`[WORKER] END: ${new Date().toISOString()}`);
     process.exit(0);
   }
 
