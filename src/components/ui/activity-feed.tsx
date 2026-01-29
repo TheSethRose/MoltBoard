@@ -638,7 +638,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
                       {formatTimestamp(entry.timestamp)}
                     </p>
                     {/* Delete button for task notes */}
-                    {entry.type === "task_note" && entry.author === "human" && (
+                    {entry.type === "task_note" && (
                       <button
                         type="button"
                         onClick={() => handleDeleteNote(entry)}
