@@ -54,31 +54,43 @@ export type ResearchResponse = TaskFormResponse | ClosureSummaryResponse;
  * Safe prompt templates - explicitly constrained to prevent side effects
  */
 const PROMPT_TEMPLATES = {
-  "task-form": `You are a helpful project assistant. Analyze the following task request and return a structured JSON response.
+  "task-form": `You are Moltbot Assist. Rewrite the task using the full context below and output a MoltBoard-aligned task.
 
-INPUT:
+INPUT (task snapshot; may be partial):
 {{INPUT}}
+
+PROCESS:
+1) Identify task type (Bug, Feature, Task, Chore, Research, Spike, Maintenance, Safety, Audit) and priority (Urgent, High, Medium, Low).
+2) Evaluate against quality criteria for that type and identify missing details.
+3) Refine into a single, autonomous execution sequence.
+4) Produce a ready-to-implement story with a quality review.
 
 OUTPUT (JSON format):
 {
   "title": "Brief, actionable title (5-7 words)",
-  "goal": "Primary objective (1-2 sentences)",
-  "scope": "What's included (2-4 bullet points)",
+  "goal": "1-2 sentence description using the required format",
+  "scope": ["Step 1 (Foundation)", "Step 2 (Core Logic)", "Step 3 (Integration)", "Step 4 (Validation)"] ,
   "outOfScope": ["Item 1", "Item 2"],
-  "dependencies": ["Item 1", "Item 2"],
-  "acceptanceCriteria": ["Criterion 1", "Criterion 2"],
-  "tags": ["tag1", "tag2"],
+  "dependencies": ["Missing detail or prerequisite", "Assumption"],
+  "acceptanceCriteria": ["Verifiable criterion", "Final output matches the defined format"],
+  "tags": ["typeTag", "optionalSecondTag"],
   "priority": "medium"
 }
 
 RULES:
 - Output ONLY valid JSON (no markdown, no commentary)
-- Be concise - use brief sentences
-- Include 2-4 acceptance criteria max
-- Default priority to "medium" unless urgency is clear
+- Use the input fields (Title, Description, Status, Project, Priority, Tags, Blocked By, Activity Log) to rewrite the task.
+- Do NOT include the activity log in the output; it is context only.
+- Description format:
+  - Bug/Feature: "As a [persona] I want [action] so that [benefit]."
+  - Chore/Maintenance/Safety/Audit: "In order to [technical necessity/compliance], we need to [action]."
+- Keep description 1-2 sentences.
+- Scope must fit a single autonomous execution window; if too large, add a dependency that flags human review.
+- Include 3-6 acceptance criteria, always include: "Final output matches the defined format".
+- Default priority to "medium" unless urgency is clear.
 - Valid tags: bug, feature, task, chore, research, spike, maintenance, safety, audit
-- Do NOT write code, touch files, or make git changes
-- Do NOT access URLs or make network requests`,
+- Do NOT write code, touch files, or make git changes.
+- Do NOT access URLs or make network requests.`,
 
   "closure-summary": `You are a helpful project assistant. Generate a closure summary for a completed task.
 

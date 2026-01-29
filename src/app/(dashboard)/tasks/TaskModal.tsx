@@ -442,15 +442,76 @@ export function TaskModal({
     }
   };
 
+  const buildResearchInput = () => {
+    const projectName = projectId
+      ? projects.find((project) => project.id === projectId)?.name
+      : null;
+    const statusLabel = status ? formatStatusLabel(status) : "unknown";
+    const priorityLabel = priority || "none";
+    const tagsLabel = tags.length > 0 ? tags.join(", ") : "none";
+    const blockedByLabel = blockedBy.length > 0
+      ? blockedBy.map((id) => `#${id}`).join(", ")
+      : "none";
+    const activityLog = (workNotes || [])
+      .slice(-5)
+      .map((note) => {
+        const author = note?.author || "system";
+        const timestamp = note?.timestamp || "";
+        const content = note?.content || "";
+        return `- [${author}] ${timestamp} ${content}`.trim();
+      })
+      .join("\n");
+
+    return [
+      `Title: ${text || "(empty)"}`,
+      `Description: ${notes || "(empty)"}`,
+      `Status: ${statusLabel}`,
+      `Project: ${projectName || "none"}`,
+      `Priority: ${priorityLabel}`,
+      `Tags: ${tagsLabel}`,
+      `Blocked By: ${blockedByLabel}`,
+      `Activity Log (read-only context; do not include in output):`,
+      activityLog || "(none)",
+    ].join("\n");
+  };
+
   // Handle research assistant completion - auto-fill form fields
   const handleResearchComplete = (data: TaskFormResponse) => {
+    const projectName = projectId
+      ? projects.find((project) => project.id === projectId)?.name
+      : null;
+    const formatList = (items: string[] | string, prefix = "- ") => {
+      if (!items) return "";
+      if (Array.isArray(items)) {
+        return items.length > 0 ? items.map((item) => `${prefix}${item}`).join("\n") : "";
+      }
+      return items ? items : "";
+    };
+    const acceptance = Array.isArray(data.acceptanceCriteria)
+      ? data.acceptanceCriteria
+      : [];
+    const acceptanceText = acceptance.length
+      ? acceptance.map((item) => `- [ ] ${item}`).join("\n")
+      : "";
+    const scopeText = Array.isArray(data.scope)
+      ? data.scope.map((item) => `- ${item}`).join("\n")
+      : data.scope || "";
+    const dependenciesText = formatList(data.dependencies);
+    const outOfScopeText = formatList(data.outOfScope);
+
     // Set the generated fields
     setText(data.title);
     setNotes(
-      data.goal +
-        (data.scope
-          ? `\n\n## Scope\n${Array.isArray(data.scope) ? data.scope.join("\n") : data.scope}`
-          : ""),
+      [
+        data.goal ? `## Description\n${data.goal}` : "",
+        scopeText ? `## Plan\n${scopeText}` : "",
+        acceptanceText ? `## Acceptance Criteria\n${acceptanceText}` : "",
+        dependenciesText ? `## Dependencies\n${dependenciesText}` : "",
+        outOfScopeText ? `## Out of Scope\n${outOfScopeText}` : "",
+        `## Quality Review\n- Type: ${data.tags?.[0] || "task"}\n- Priority: ${data.priority}\n- Status: ${formatStatusLabel(status)}\n- Project: ${projectName || "none"}\n- Tags: ${data.tags.length > 0 ? data.tags.join(", ") : "none"}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     );
 
     // Set priority
@@ -458,6 +519,32 @@ export function TaskModal({
 
     // Set tags
     setTags(data.tags);
+
+    // Map dependency task numbers to blockers when possible
+    if (Array.isArray(data.dependencies) && data.dependencies.length > 0) {
+      const taskNumbers = new Set<number>();
+      for (const dep of data.dependencies) {
+        const matches = dep.match(/#?(\d+)/g) || [];
+        for (const match of matches) {
+          const num = parseInt(match.replace("#", ""), 10);
+          if (!Number.isNaN(num)) {
+            taskNumbers.add(num);
+          }
+        }
+      }
+
+      if (taskNumbers.size > 0) {
+        const availableTaskNumbers = new Set(
+          allTasks.map((taskItem) => taskItem.task_number),
+        );
+        const mappedBlockers = Array.from(taskNumbers).filter((num) =>
+          availableTaskNumbers.has(num),
+        );
+        if (mappedBlockers.length > 0) {
+          setBlockedBy(mappedBlockers);
+        }
+      }
+    }
 
     // Focus the title input to let user review
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -486,16 +573,14 @@ export function TaskModal({
               <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
                 <Type size={14} className="text-muted-foreground" />
                 Title
-                {!isEditMode && (
-                  <ResearchButton
-                    mode="task-form"
-                    input={text || notes}
-                    onTaskFormComplete={handleResearchComplete}
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 text-xs"
-                  />
-                )}
+                <ResearchButton
+                  mode="task-form"
+                  input={buildResearchInput()}
+                  onTaskFormComplete={handleResearchComplete}
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-xs"
+                />
               </label>
               <div className={cn(titleError && "animate-shake")}>
                 <input
