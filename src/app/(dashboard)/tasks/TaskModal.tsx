@@ -36,6 +36,7 @@ import {
   ResearchButton,
   type TaskFormResponse,
 } from "@/components/ui/research-button";
+import { generateNoteReview } from "@/lib/clawdbot-research";
 import {
   type Task,
   type Project,
@@ -43,6 +44,7 @@ import {
   TAG_COLORS,
   PRIORITY_OPTIONS,
   PRIORITY_COLORS,
+  type WorkNote,
 } from "./types";
 
 const TASK_STATUSES = getTaskStatuses();
@@ -399,13 +401,18 @@ export function TaskModal({
   };
 
   // Handle adding a work note
-  const handleAddNote = async (content: string) => {
+  const handleAddNote = async (
+    content: string,
+    options?: { author?: WorkNote["author"]; skipAI?: boolean },
+  ) => {
     if (!task) return;
+
+    const author = options?.author ?? "human";
 
     const newNote = {
       id: crypto.randomUUID(),
       content,
-      author: "human" as const,
+      author,
       timestamp: new Date().toISOString(),
     };
 
@@ -440,6 +447,37 @@ export function TaskModal({
     } catch (err) {
       console.error("Failed to save work note:", err);
     }
+
+    const shouldReview = author === "human" && !options?.skipAI;
+    if (!shouldReview) return;
+
+    try {
+      const context = buildNoteReviewContext(updatedNotes);
+      const review = await generateNoteReview(content, context);
+      const reply = review.reply?.trim();
+      if (!reply) return;
+
+      const agentNote = {
+        id: crypto.randomUUID(),
+        content: reply,
+        author: "agent" as const,
+        timestamp: new Date().toISOString(),
+      };
+
+      setWorkNotes((prev) => [...(prev || []), agentNote]);
+
+      await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.id,
+          work_notes: agentNote,
+          append_work_note: true,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to generate AI note review:", err);
+    }
   };
 
   const buildResearchInput = () => {
@@ -472,6 +510,40 @@ export function TaskModal({
       `Tags: ${tagsLabel}`,
       `Blocked By: ${blockedByLabel}`,
       `Activity Log (read-only context; do not include in output):`,
+      activityLog || "(none)",
+    ].join("\n");
+  };
+
+  const buildNoteReviewContext = (notesOverride?: Task["work_notes"]) => {
+    const projectName = projectId
+      ? projects.find((project) => project.id === projectId)?.name
+      : null;
+    const statusLabel = status ? formatStatusLabel(status) : "unknown";
+    const priorityLabel = priority || "none";
+    const tagsLabel = tags.length > 0 ? tags.join(", ") : "none";
+    const blockedByLabel =
+      blockedBy.length > 0
+        ? blockedBy.map((id) => `#${id}`).join(", ")
+        : "none";
+    const activityLog = (notesOverride || workNotes || [])
+      .slice(-10)
+      .map((note) => {
+        const author = note?.author || "system";
+        const timestamp = note?.timestamp || "";
+        const content = note?.content || "";
+        return `- [${author}] ${timestamp} ${content}`.trim();
+      })
+      .join("\n");
+
+    return [
+      `Title: ${text || "(empty)"}`,
+      `Description: ${notes || "(empty)"}`,
+      `Status: ${statusLabel}`,
+      `Project: ${projectName || "none"}`,
+      `Priority: ${priorityLabel}`,
+      `Tags: ${tagsLabel}`,
+      `Blocked By: ${blockedByLabel}`,
+      `Activity Log (read-only context):`,
       activityLog || "(none)",
     ].join("\n");
   };
@@ -753,13 +825,16 @@ export function TaskModal({
           <div className="border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6 flex flex-col min-h-[280px] md:flex-[2_1_0%] md:min-w-0 md:min-h-0">
             <WorkNotes
               notes={isEditMode ? workNotes || [] : []}
-              onAddNote={handleAddNote}
+              onAddNote={(content) => handleAddNote(content)}
               disabled={!isEditMode}
               className="flex-1 h-full min-h-0"
               enableClosureSummary={isEditMode && status === "completed"}
               taskTitle={task?.text || ""}
               onClosureSummarySave={async (content) => {
-                await handleAddNote(content);
+                await handleAddNote(content, {
+                  author: "system",
+                  skipAI: true,
+                });
               }}
             />
           </div>
