@@ -501,38 +501,33 @@ async function main() {
     process.exit(0);
   }
 
-  // Found an available task - display it
-  console.log("=== Next Available Task ===");
-  console.log(`#${nextTask.task_number}: ${nextTask.text}`);
-  console.log(`Priority: ${nextTask.priority || "none"}`);
+  // Found an available task - display it (non-auto mode, for manual review)
+  console.log(`[WORKER] NEXT_TASK: Task #${nextTask.task_number} (id=${nextTask.id})`);
+  console.log(`[WORKER] TITLE: ${nextTask.text}`);
+  console.log(`[WORKER] PRIORITY: ${nextTask.priority || "none"}`);
 
   const nextProjectRoot = await getProjectRootForTask(nextTask);
   if (nextProjectRoot) {
-    console.log(`Project Root: ${nextProjectRoot}`);
-    console.log("→ Work ONLY inside the Project Root (set CWD there).");
+    console.log(`[WORKER] PROJECT_ROOT: ${nextProjectRoot}`);
   }
 
   const tags = Array.isArray(nextTask.tags)
     ? nextTask.tags
     : JSON.parse(nextTask.tags || "[]");
   if (tags.length > 0) {
-    console.log(`Tags: ${tags.join(", ")}`);
+    console.log(`[WORKER] TAGS: ${tags.join(", ")}`);
   }
 
   if (nextTask.notes) {
-    console.log(`\nDescription:\n${nextTask.notes}`);
+    // Truncate notes to first 200 chars for summary
+    const notesSummary = nextTask.notes.length > 200 
+      ? nextTask.notes.slice(0, 200) + "..." 
+      : nextTask.notes;
+    console.log(`[WORKER] NOTES: ${notesSummary.replace(/\n/g, " ")}`);
   }
 
-  const nextTaskNotes = parseWorkNotes(nextTask.work_notes).slice(-10);
-  if (nextTaskNotes.length > 0) {
-    console.log("\nRecent Work Notes:");
-    nextTaskNotes.forEach((note) => {
-      const author = note.author || "system";
-      const ts = note.timestamp || "";
-      const content = note.content || "";
-      console.log(`- [${author}] ${ts} ${content}`.trim());
-    });
-  }
+  const nextTaskNotes = parseWorkNotes(nextTask.work_notes);
+  console.log(`[WORKER] WORK_NOTES: ${nextTaskNotes.length} entries`);
 
   // Show blocked tasks waiting on this one
   const waitingOnThis = filteredTasks.filter((t) => {
@@ -544,58 +539,11 @@ async function main() {
   });
 
   if (waitingOnThis.length > 0) {
-    console.log(
-      `\n⏳ ${waitingOnThis.length} task(s) waiting on this to complete:`,
-    );
-    waitingOnThis.forEach((t) => console.log(`  #${t.task_number}: ${t.text}`));
+    console.log(`[WORKER] UNBLOCKS: ${waitingOnThis.map(t => `#${t.task_number}`).join(", ")}`);
   }
 
-  console.log(
-    `\n→ To work on this task, update its status to "${TASK_STATUS.inProgress}"`,
-  );
-  console.log(
-    "   For tasks returning from stuck state, check if complete first.",
-  );
-  console.log("\n=== AGENT PROMPT (STRICT) ===");
-  console.log("ROLE: Execution agent for this single task.");
-  console.log("GOAL: Complete the task exactly as requested.");
-  console.log("CONSTRAINTS:");
-  console.log("1) Work ONLY inside the Project Root shown above (sandbox).");
-  console.log("2) Use relative paths; no writes outside sandbox.");
-  console.log(
-    "3) Update work_notes throughout the process (progress + decisions).",
-  );
-  console.log(
-    '4) If blocked or unclear, use --block <taskId> --reason "..." --activity "...".',
-  );
-  console.log(
-    "5) If you commit, run git from the Project Root (CWD), not the workspace root.",
-  );
-  console.log("PROCESS:");
-  console.log('- Start with a short plan in work_notes: "Started: <short plan>"');
-  console.log(
-    '- Make changes in small steps; log each change: "Progress: <what changed>"',
-  );
-  console.log('- Record key decisions: "Decision: <why>"');
-  console.log('- If blocked or ambiguous, log "Blocked: <reason>" and stop.');
-  console.log("RESEARCH (only if needed):");
-  console.log("- Use MoltDocs for current docs.");
-  console.log(
-    "- Use notebooklm-skill (ID: 132520db-e751-4ea2-9512-d2b9418c8ecb).",
-  );
-  console.log("- Use Agent-Browser only for live checks.");
-  console.log("VERIFICATION (before marking done):");
-  console.log("- Confirm all changes are inside Project Root.");
-  console.log(
-    "- Confirm git status is clean or changes are committed from Project Root.",
-  );
-  console.log('- Add "status:done" to work_notes when complete.');
-  console.log("OUTPUT FORMAT (work_notes entries):");
-  console.log("- Started: <short plan>");
-  console.log("- Progress: <what changed>");
-  console.log("- Decision: <why>");
-  console.log("- Blocked: <reason>");
-  console.log("- Done: status:done");
+  console.log(`[WORKER] HINT: Run with --auto to auto-pickup`);
+  console.log(`[WORKER] END: ${new Date().toISOString()}`);
 }
 
 main().catch((err) => {
