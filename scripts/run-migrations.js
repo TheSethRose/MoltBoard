@@ -15,11 +15,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import workspacePath from "./workspace-path.js";
 
-const { getWorkspacePath } = workspacePath;
+const { getDbPath } = workspacePath;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DB_PATH = path.join(getWorkspacePath(), "data", "tasks.db");
+const DB_PATH = getDbPath();
 const MIGRATIONS_DIR = path.join(__dirname, "migrations");
 
 function log(message) {

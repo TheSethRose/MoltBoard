@@ -4,11 +4,10 @@
  */
 
 import { Database } from "bun:sqlite";
-import path from "path";
-import { getWorkspacePath } from "@/lib/workspace-path";
+import { getDbPath } from "@/lib/workspace-path";
 import { Task, parseDbTask, type DbTask } from "@/types/task";
 
-const DB_PATH = path.join(getWorkspacePath(), "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 function getDb() {
   return new Database(DB_PATH);

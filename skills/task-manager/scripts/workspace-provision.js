@@ -10,11 +10,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { getDbPath, getWorkspacePath } from "../../../scripts/workspace-path.js";
 
 const WORKSPACE_ROOT = getWorkspacePath();
-const DB_PATH =
-  process.env.TASKS_DB_PATH || path.join(WORKSPACE_ROOT, "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 const DRY_RUN = process.argv.includes("--dry-run");
 

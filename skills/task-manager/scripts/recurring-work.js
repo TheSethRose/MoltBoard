@@ -20,15 +20,14 @@ import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { Database } from "bun:sqlite";
-import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { getDbPath } from "../../../scripts/workspace-path.js";
 import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-const DB_PATH =
-  process.env.DB_PATH || path.join(getWorkspacePath(), "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 const STALE_THRESHOLD_MINUTES = 30;
 

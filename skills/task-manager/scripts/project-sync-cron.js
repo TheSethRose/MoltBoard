@@ -9,11 +9,9 @@
 
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { getDbPath } from "../../../scripts/workspace-path.js";
 
-const DB_PATH =
-  process.env.TASKS_DB_PATH ||
-  path.join(getWorkspacePath(), "data", "tasks.db");
+const DB_PATH = getDbPath();
 const DEFAULT_APP_URL = "http://localhost:5278";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || DEFAULT_APP_URL;

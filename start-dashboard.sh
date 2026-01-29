@@ -43,6 +43,9 @@ LOG_FILE="$WORKSPACE_DIR/logs/moltboard.log"
 PID_FILE="$WORKSPACE_DIR/logs/moltboard.pid"
 WORKER_LOG_FILE="$WORKSPACE_DIR/logs/moltboard-worker.log"
 WORKER_PID_FILE="$WORKSPACE_DIR/logs/moltboard-worker.pid"
+DB_PATH="${DB_PATH:-$HOME/clawdbot/data/tasks.db}"
+export DATABASE_URL="$DB_PATH"
+export MOLTBOT_DB_PATH="$DB_PATH"
 
 start_dashboard() {
     if [ -f "$PID_FILE" ]; then

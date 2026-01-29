@@ -36,3 +36,23 @@ export function getWorkspacePath(): string {
   // 3. Fallback to default
   return DEFAULT_WORKSPACE;
 }
+
+export function getDbPath(): string {
+  const envPath =
+    process.env.MOLTBOT_DB_PATH ||
+    process.env.TASKS_DB_PATH ||
+    process.env.DB_PATH ||
+    process.env.DATABASE_URL;
+  if (envPath && envPath.trim()) {
+    return envPath.trim();
+  }
+
+  const defaultPath = path.join(homedir(), "clawdbot", "data", "tasks.db");
+  try {
+    fs.mkdirSync(path.dirname(defaultPath), { recursive: true });
+  } catch {
+    // Ignore mkdir failures; sqlite will surface errors on open.
+  }
+
+  return defaultPath;
+}

@@ -1,9 +1,9 @@
 import { Database } from "bun:sqlite";
 import path from "path";
-import { getWorkspacePath } from "@/lib/workspace-path";
+import { getDbPath } from "@/lib/workspace-path";
 import { Mutex } from "async-mutex";
 
-const DB_PATH = path.join(getWorkspacePath(), "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 // Pool configuration
 const POOL_SIZE = 5;

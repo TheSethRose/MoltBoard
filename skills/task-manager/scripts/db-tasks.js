@@ -6,10 +6,9 @@
 import path from "node:path";
 import fs from "node:fs";
 import { Database } from "bun:sqlite";
-import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { getDbPath } from "../../../scripts/workspace-path.js";
 
-const WORKSPACE_ROOT = getWorkspacePath();
-const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 if (!fs.existsSync(DB_PATH)) {
   console.error("Database not found at", DB_PATH);

@@ -23,11 +23,10 @@ import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { Database } from "bun:sqlite";
-import { getWorkspacePath } from "../../../scripts/workspace-path.js";
+import { getDbPath } from "../../../scripts/workspace-path.js";
 import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
 
-const WORKSPACE_ROOT = getWorkspacePath();
-const DB_PATH = path.join(WORKSPACE_ROOT, "data", "tasks.db");
+const DB_PATH = getDbPath();
 
 const NOTEBOOKLM_SKILL_ID = "132520db-e751-4ea2-9512-d2b9418c8ecb";
 
