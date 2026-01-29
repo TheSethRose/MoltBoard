@@ -3,14 +3,24 @@
  * Uses direct SQLite access for initial SSR render.
  */
 
-import { Database } from "bun:sqlite";
 import { getDbPath } from "@/lib/workspace-path";
 import { Task, parseDbTask, type DbTask } from "@/types/task";
+
+// Runtime detection: use bun:sqlite when running in Bun, better-sqlite3 for Node.js builds
+const isBun = typeof Bun !== "undefined";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let DatabaseConstructor: any;
+if (isBun) {
+  DatabaseConstructor = require("bun:sqlite").Database;
+} else {
+  DatabaseConstructor = require("better-sqlite3");
+}
 
 const DB_PATH = getDbPath();
 
 function getDb() {
-  return new Database(DB_PATH);
+  return new DatabaseConstructor(DB_PATH);
 }
 
 /**

@@ -4,7 +4,7 @@ This guide describes the current cron jobs stored in the Clawdbot gateway. The j
 
 ## Prereqs
 
-- Clawdbot gateway running
+- Clawdbot gateway running as `agent` user via LaunchDaemon (see [Database Isolation](#database-isolation))
 - `.env` populated (intervals + models)
 - **Note:** Ensure `WORKER_*_MODEL` values are allowed by your gateway allowlist.
 - Set `--thinking high` to match the current worker configuration.
@@ -21,8 +21,7 @@ The current schedule is every 10 minutes for worker jobs, every 3 minutes for `w
 
 ### Path configuration rule
 
-- **Main session jobs (e.g., `workspace-backup`):** run on the host and must use host paths (e.g. `/Users/clawdbot/...`) so they can access the raw DB file.
-- **Isolated worker jobs:** run inside the Docker sandbox and must use `/workspace/...` paths (the mounted workspace inside the container).
+All jobs use host paths (e.g., `/Users/clawdbot/workspace/...`). Replace `<WORKSPACE>` with your resolved workspace path.
 
 All task mutations must go through the CLI scripts in the workspace (no direct sqlite access).
 
@@ -67,15 +66,63 @@ clawdbot cron list
 clawdbot cron runs --id <jobId> --limit 20
 ```
 
-## Sandbox + tool policy (recommended)
+## Database Isolation
 
-To keep agents from bypassing the CLI and touching the database directly, run workers in a sandboxed environment that only mounts the project code, not the workspace `data/` directory. The CLI scripts act as the only bridge for DB writes.
+The gateway runs as the `agent` user via a system LaunchDaemon. The database directory is owned by `agent` with mode `700`, preventing other users (including `clawdbot` and subagents) from accessing the database directly.
 
-Minimum requirements:
+### Setup
 
-- **Workspace mounts:** mount the repo (project code) but do **not** mount `<WORKSPACE>/data`.
-- **Tool allowlist:** allow only the task manager CLI scripts; deny `sqlite3` and broad filesystem discovery tools.
-- **CLI bridge:** ensure the scripts in `<WORKSPACE>/skills/task-manager/scripts` are available in the sandbox to perform approved task mutations.
+1. **LaunchDaemon** at `/Library/LaunchDaemons/com.clawdbot.gateway2.plist`:
+   - Runs as `UserName: agent`
+   - Executes `bun run start` (production build)
+   - Listens on port 5278
+
+2. **Database permissions**:
+   ```bash
+   # Directory owned by agent, mode 700 (no access for others)
+   sudo chown -R agent:staff /Users/clawdbot/clawdbot/data
+   sudo chmod 700 /Users/clawdbot/clawdbot/data
+   ```
+
+3. **Access matrix**:
+   | User | DB Access | Mechanism |
+   |------|-----------|-----------|
+   | `agent` | Read + Write | Owns data directory |
+   | `clawdbot` | **None** | Permission denied |
+   | Subagents | **API only** | Must use CLI scripts → API |
+
+### Managing the daemon
+
+```bash
+# Start
+sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+
+# Stop
+sudo launchctl unload /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+
+# Restart (after code changes)
+sudo launchctl unload /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+
+# Check status
+ps aux | grep "bun.*start"
+curl -s http://localhost:5278/api/tasks | head -c 100
+```
+
+### CLI bridge
+
+The scripts in `<WORKSPACE>/skills/task-manager/scripts` call the API to perform task mutations. Subagents use these scripts rather than accessing the database directly.
+
+**Script status:**
+| Script | API-first | Notes |
+|--------|-----------|-------|
+| `add-work-note.js` | ✅ | Uses API, falls back to direct DB |
+| `recurring-worker.js` | ✅ | Uses API exclusively |
+| `review-worker.js` | ✅ | Uses API exclusively |
+| `backlog-groomer.js` | ✅ | Uses API exclusively |
+| `complete-task.js` | ✅ | Uses API exclusively |
+
+All scripts use `scripts/api-client.js` which auto-detects Docker vs host environment.
 
 ## Notes
 

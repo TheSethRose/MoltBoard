@@ -4,15 +4,11 @@
  * - Selects the next backlog task without groom markers
  * - Agent reviews and clarifies the task
  * - Agent marks as ready or blocked with a summary
+ *
+ * Uses the MoltBoard API (required for user-based DB isolation).
  */
 
-import path from "node:path";
-import fs from "node:fs";
-import { Database } from "bun:sqlite";
-import { appendWorkNote, parseWorkNotes } from "../../../scripts/work-notes.js";
-import { getDbPath } from "../../../scripts/workspace-path.js";
-
-const DB_PATH = getDbPath();
+import apiClient from "../../../scripts/api-client.js";
 
 const DEFAULT_TASK_STATUSES = [
   "backlog",
@@ -58,15 +54,18 @@ function getArgValue(flag) {
   return process.argv[index + 1] || null;
 }
 
-if (!fs.existsSync(DB_PATH)) {
-  console.log("No tasks database found");
-  process.exit(0);
+function parseWorkNotes(workNotes) {
+  if (!workNotes) return [];
+  if (Array.isArray(workNotes)) return workNotes;
+  try {
+    return JSON.parse(workNotes);
+  } catch {
+    return [];
+  }
 }
 
-const db = new Database(DB_PATH);
-
-function hasGroomMarker(workNotesJson) {
-  const notes = parseWorkNotes(workNotesJson);
+function hasGroomMarker(workNotes) {
+  const notes = parseWorkNotes(workNotes);
   return notes.some((note) =>
     typeof note?.content === "string"
       ? note.content.toLowerCase().includes("groom:")
@@ -74,91 +73,78 @@ function hasGroomMarker(workNotesJson) {
   );
 }
 
-function markReady(taskId, summary, notesUpdate) {
+async function markReady(taskId, summary, notesUpdate) {
   if (!summary) {
     console.error("Summary is required (use --summary)");
     return;
   }
 
+  await apiClient.updateTaskStatus(taskId, TASK_STATUS.ready);
+  
   if (notesUpdate) {
-    db.prepare(
-      "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    ).run(TASK_STATUS.ready, taskId);
-    appendWorkNote(db, taskId, `groom:notes: ${notesUpdate}`);
-  } else {
-    db.prepare(
-      "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    ).run(TASK_STATUS.ready, taskId);
+    await apiClient.appendWorkNote(taskId, `groom:notes: ${notesUpdate}`, "system");
   }
 
-  appendWorkNote(db, taskId, `groom:done: ${summary}`);
+  await apiClient.appendWorkNote(taskId, `groom:done: ${summary}`, "system");
   console.log(`\n✓ Groomed task #${taskId} → ${TASK_STATUS.ready}`);
 }
 
-function markBlocked(taskId, reason, activity) {
+async function markBlocked(taskId, reason, activity) {
   if (!reason) {
     console.error("Block reason is required (use --reason)");
     return;
   }
 
-  db.prepare(
-    "UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(TASK_STATUS.blocked, taskId);
-
-  appendWorkNote(db, taskId, `groom:blocked: ${reason}`);
-  appendWorkNote(db, taskId, `status:blocked: ${reason}`);
+  await apiClient.updateTaskStatus(taskId, TASK_STATUS.blocked);
+  await apiClient.appendWorkNote(taskId, `groom:blocked: ${reason}`, "system");
+  await apiClient.appendWorkNote(taskId, `status:blocked: ${reason}`, "system");
+  
   if (activity) {
-    appendWorkNote(db, taskId, `activity: ${activity}`);
+    await apiClient.appendWorkNote(taskId, `activity: ${activity}`, "system");
   }
 
   console.log(`\n✓ Blocked task #${taskId}: ${reason}`);
 }
 
-const markReadyId = parseInt(getArgValue("--mark-ready") || "", 10);
-const markBlockedId = parseInt(getArgValue("--mark-blocked") || "", 10);
-const summaryArg = getArgValue("--summary");
-const reasonArg = getArgValue("--reason");
-const notesArg = getArgValue("--notes");
-const activityArg = getArgValue("--activity");
+async function main() {
+  const markReadyId = parseInt(getArgValue("--mark-ready") || "", 10);
+  const markBlockedId = parseInt(getArgValue("--mark-blocked") || "", 10);
+  const summaryArg = getArgValue("--summary");
+  const reasonArg = getArgValue("--reason");
+  const notesArg = getArgValue("--notes");
+  const activityArg = getArgValue("--activity");
 
-if (markReadyId) {
-  markReady(markReadyId, summaryArg, notesArg);
-  db.close();
-  process.exit(0);
-}
+  if (markReadyId) {
+    await markReady(markReadyId, summaryArg, notesArg);
+    process.exit(0);
+  }
 
-if (markBlockedId) {
-  markBlocked(markBlockedId, reasonArg, activityArg);
-  db.close();
-  process.exit(0);
-}
+  if (markBlockedId) {
+    await markBlocked(markBlockedId, reasonArg, activityArg);
+    process.exit(0);
+  }
 
-const backlogTasks = db
-  .prepare(
-    `
-  SELECT id, task_number, text, notes, work_notes, created_at, updated_at
-  FROM tasks
-  WHERE status = ?
-  ORDER BY sort_order ASC, id ASC
-`,
-  )
-  .all(TASK_STATUS.backlog);
+  // Get all tasks via API
+  const { tasks } = await apiClient.getTasks();
+  
+  const backlogTasks = tasks
+    .filter((t) => t.status === TASK_STATUS.backlog)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.id - b.id);
 
-const nextTask = backlogTasks.find((task) => !hasGroomMarker(task.work_notes));
+  const nextTask = backlogTasks.find((task) => !hasGroomMarker(task.work_notes));
 
-if (!nextTask) {
-  console.log("=== No Backlog Tasks to Groom ===");
-  console.log("All backlog tasks already have grooming markers.");
-  db.close();
-  process.exit(0);
-}
+  if (!nextTask) {
+    console.log("=== No Backlog Tasks to Groom ===");
+    console.log("All backlog tasks already have grooming markers.");
+    process.exit(0);
+  }
 
-console.log("=== Backlog Grooming ===");
-console.log(`#${nextTask.task_number}: ${nextTask.text}`);
-if (nextTask.notes) {
-  console.log(`\nCurrent Notes:\n${nextTask.notes}`);
-}
-if (nextTask.work_notes) {
+  console.log("=== Backlog Grooming ===");
+  console.log(`#${nextTask.task_number}: ${nextTask.text}`);
+  if (nextTask.notes) {
+    console.log(`\nCurrent Notes:\n${nextTask.notes}`);
+  }
+  
   const notes = parseWorkNotes(nextTask.work_notes);
   if (notes.length > 0) {
     console.log("\nRecent Work Notes:");
@@ -169,17 +155,21 @@ if (nextTask.work_notes) {
       console.log(`- [${author}] ${ts} ${content}`.trim());
     });
   }
+  
+  console.log("\nInstructions:");
+  console.log("1) Research and clarify scope, acceptance, and dependencies.");
+  console.log("2) Update notes if needed (include plan + definition).");
+  console.log("3) Mark ready or blocked using one of the commands below.");
+  console.log("\nCommands:");
+  console.log(
+    `- Mark ready: bun backlog-groomer.js --mark-ready ${nextTask.id} --summary "<summary>" --notes "<append notes>"`,
+  );
+  console.log(
+    `- Block: bun backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<reason>" --activity "<activity log entry>"`,
+  );
 }
-console.log("\nInstructions:");
-console.log("1) Research and clarify scope, acceptance, and dependencies.");
-console.log("2) Update notes if needed (include plan + definition).");
-console.log("3) Mark ready or blocked using one of the commands below.");
-console.log("\nCommands:");
-console.log(
-  `- Mark ready: node scripts/backlog-groomer.js --mark-ready ${nextTask.id} --summary "<summary>" --notes "<append notes>"`,
-);
-console.log(
-  `- Block: node scripts/backlog-groomer.js --mark-blocked ${nextTask.id} --reason "<reason>" --activity "<activity log entry>"`,
-);
 
-db.close();
+main().catch((err) => {
+  console.error("Error:", err.message);
+  process.exit(1);
+});

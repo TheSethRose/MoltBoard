@@ -5,8 +5,8 @@
  *   bun add-work-note.js --task-id <id> --content "..." [--author system|agent|human]
  *   bun add-work-note.js --task-number <num> --content "..." [--author system|agent|human]
  *
- * When running in Docker sandbox, uses the MoltBoard API.
- * When running on host, uses direct SQLite access.
+ * Uses the MoltBoard API (required for user-based DB isolation).
+ * Falls back to direct SQLite only if API is unavailable AND DB is accessible.
  */
 
 import fs from "node:fs";
@@ -20,11 +20,6 @@ function getArgValue(flag) {
   const index = process.argv.indexOf(flag);
   if (index === -1) return null;
   return process.argv[index + 1] || null;
-}
-
-if (!fs.existsSync(DB_PATH)) {
-  console.log("No tasks database found");
-  process.exit(1);
 }
 
 const taskId = parseInt(getArgValue("--task-id") || "", 10);
@@ -43,36 +38,35 @@ if (!taskId && !taskNumber) {
 }
 
 async function main() {
-  // Try API first (works in Docker sandbox)
-  if (apiClient.IS_DOCKER) {
-    try {
-      let task;
-      if (taskId) {
-        task = await apiClient.getTask({ id: taskId });
-      } else {
-        task = await apiClient.getTask({ taskNumber });
-      }
+  // Try API first (required for user-based DB isolation)
+  try {
+    let task;
+    if (taskId) {
+      task = await apiClient.getTask({ id: taskId });
+    } else {
+      task = await apiClient.getTask({ taskNumber });
+    }
 
-      if (!task) {
-        console.log("Task not found");
-        process.exit(1);
-      }
-
-      await apiClient.appendWorkNote(task.id, content.trim(), author);
-      console.log(`✓ Added work note to task #${task.task_number}`);
-      return;
-    } catch (error) {
-      console.error("API error:", error.message);
+    if (!task) {
+      console.log("Task not found");
       process.exit(1);
     }
+
+    await apiClient.appendWorkNote(task.id, content.trim(), author);
+    console.log(`✓ Added work note to task #${task.task_number}`);
+    return;
+  } catch (apiError) {
+    // API failed - try direct DB access as fallback
+    if (!fs.existsSync(DB_PATH)) {
+      console.error("API unavailable and database not accessible");
+      console.error("API error:", apiError.message);
+      process.exit(1);
+    }
+
+    console.warn("API unavailable, falling back to direct DB access");
   }
 
-  // Direct DB access on host
-  if (!fs.existsSync(DB_PATH)) {
-    console.log("No tasks database found");
-    process.exit(1);
-  }
-
+  // Direct DB access fallback (only if API failed and DB exists)
   const { Database } = await import("bun:sqlite");
   const db = new Database(DB_PATH);
 

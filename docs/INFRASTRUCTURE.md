@@ -451,7 +451,7 @@ async function syncAllProjects() {
   for (const project of projects) {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/projects/${project.id}/sync`,
+        `http://localhost:5278/api/projects/${project.id}/sync`,
         { method: "POST" },
       );
       const result = await response.json();
@@ -562,8 +562,10 @@ DATABASE_URL=./data/...   # Local path
 
 ### Database Security
 
-- SQLite file permissions: owner read/write only
-- No network exposure (local file)
+- Database directory owned by `agent` user with mode `700`
+- Gateway runs as `agent` user via LaunchDaemon (read/write access)
+- `clawdbot` user and subagents have no direct DB access
+- All task mutations go through API → CLI scripts bridge
 - WAL mode prevents corruption from crashes
 
 ### API Security
@@ -602,7 +604,7 @@ DATABASE_URL=./data/...   # Local path
 ### Development
 
 ```bash
-bun run dev     # Port 5000, hot reload
+bun run dev     # Port 5278, hot reload
 ```
 
 ### Production
@@ -614,7 +616,7 @@ bun run start   # Serve production build
 
 ### As a Service (macOS)
 
-Create a LaunchAgent plist:
+The gateway runs as the `agent` user for database isolation. Create a **LaunchDaemon** (system-level):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -623,19 +625,34 @@ Create a LaunchAgent plist:
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.moltboard.dashboard</string>
+    <string>com.clawdbot.gateway2</string>
+    <key>UserName</key>
+    <string>agent</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/bash</string>
-        <string>-c</string>
-        <string>cd /path/to/moltboard && bun run start</string>
+        <string>/Users/clawdbot/.bun/bin/bun</string>
+        <string>run</string>
+        <string>start</string>
     </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/clawdbot/workspace/projects/moltboard</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PORT</key>
+        <string>5278</string>
+        <key>HOME</key>
+        <string>/Users/clawdbot</string>
+        <key>PATH</key>
+        <string>/Users/clawdbot/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
-    <key>WorkingDirectory</key>
-    <string>/path/to/moltboard</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/clawdbot-gateway.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/clawdbot-gateway.err</string>
 </dict>
 </plist>
 ```
@@ -643,8 +660,28 @@ Create a LaunchAgent plist:
 Install:
 
 ```bash
-cp com.moltboard.dashboard.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.moltboard.dashboard.plist
+# Copy to system LaunchDaemons
+sudo cp com.clawdbot.gateway2.plist /Library/LaunchDaemons/
+
+# Set DB permissions (agent owns, others denied)
+sudo chown -R agent:staff /Users/clawdbot/clawdbot/data
+sudo chmod 700 /Users/clawdbot/clawdbot/data
+
+# Load daemon
+sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+```
+
+Manage:
+
+```bash
+# Stop
+sudo launchctl unload /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+
+# Start
+sudo launchctl load /Library/LaunchDaemons/com.clawdbot.gateway2.plist
+
+# Check status
+ps aux | grep "bun.*start"
 ```
 
 ---
@@ -676,8 +713,8 @@ curl -H "Authorization: token $GITHUB_TOKEN" \
 ### Port Already in Use
 
 ```bash
-# Find process on port 5000
-lsof -i :5000
+# Find process on port 5278
+lsof -i :5278
 
 # Kill it
 kill -9 <PID>
@@ -697,10 +734,10 @@ kill -9 <PID>
 
 ```bash
 # API health
-curl http://localhost:5000/api/status
+curl http://localhost:5278/api/status
 
 # Database health
-curl http://localhost:5000/api/status/database
+curl http://localhost:5278/api/status/database
 ```
 
 ### Metrics
