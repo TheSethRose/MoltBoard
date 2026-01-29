@@ -82,10 +82,10 @@ async function getModelConfig(): Promise<{
 
 export interface ResearchRequest {
   /** Type of research assistance */
-  type: "task-form" | "closure-summary";
+  type: "task-form" | "closure-summary" | "note-review";
   /** The input text to analyze */
   input: string;
-  /** For closure summary: optional task notes/history */
+  /** Optional task notes/history/context */
   notes?: string;
 }
 
@@ -106,7 +106,14 @@ export interface ClosureSummaryResponse {
   notesForRecord: string;
 }
 
-export type ResearchResponse = TaskFormResponse | ClosureSummaryResponse;
+export interface NoteReviewResponse {
+  reply: string;
+}
+
+export type ResearchResponse =
+  | TaskFormResponse
+  | ClosureSummaryResponse
+  | NoteReviewResponse;
 
 /**
  * Safe prompt templates - explicitly constrained to prevent side effects
@@ -169,6 +176,26 @@ RULES:
 - Output ONLY valid JSON (no markdown, no commentary)
 - Focus on outcomes and results
 - Be professional but concise
+- Do NOT write code, touch files, or make git changes
+- Do NOT access URLs or make network requests`,
+
+  "note-review": `You are Moltbot Assist. Review the new note and respond with a helpful, concise reply for the activity log.
+
+NEW NOTE (user message):
+{{INPUT}}
+
+TASK CONTEXT & ACTIVITY LOG (read-only context):
+{{NOTES}}
+
+OUTPUT (JSON format):
+{
+  "reply": "Short response that references relevant context, asks clarifying questions if needed, and notes any risks or blockers."
+}
+
+RULES:
+- Output ONLY valid JSON (no markdown, no commentary)
+- Keep reply to 2-5 sentences
+- If no context is relevant, say what you can and ask 1 clarifying question
 - Do NOT write code, touch files, or make git changes
 - Do NOT access URLs or make network requests`,
 };
@@ -279,11 +306,15 @@ function parseResearchResponse(
           ? parsed.priority
           : "medium",
       };
-    } else {
+    } else if (type === "closure-summary") {
       return {
         summary: parsed.summary || "",
         keyChanges: Array.isArray(parsed.keyChanges) ? parsed.keyChanges : [],
         notesForRecord: parsed.notesForRecord || "",
+      };
+    } else {
+      return {
+        reply: parsed.reply || "",
       };
     }
   } catch (error) {
@@ -299,9 +330,12 @@ export const POST = withErrorHandling(
     const body: ResearchRequest = await req.json();
 
     // Validate request
-    if (!body.type || !["task-form", "closure-summary"].includes(body.type)) {
+    if (
+      !body.type ||
+      !["task-form", "closure-summary", "note-review"].includes(body.type)
+    ) {
       throw badRequest(
-        "Invalid research type. Must be 'task-form' or 'closure-summary'.",
+        "Invalid research type. Must be 'task-form', 'closure-summary', or 'note-review'.",
         "INVALID_RESEARCH_TYPE",
       );
     }
@@ -321,6 +355,12 @@ export const POST = withErrorHandling(
       prompt = prompt.replace("{{NOTES}}", body.notes);
     } else if (body.type === "closure-summary") {
       prompt = prompt.replace("{{NOTES}}", "(No additional notes provided)");
+    }
+
+    if (body.type === "note-review" && body.notes) {
+      prompt = prompt.replace("{{NOTES}}", body.notes);
+    } else if (body.type === "note-review") {
+      prompt = prompt.replace("{{NOTES}}", "(No additional context provided)");
     }
 
     // Call pi-ai

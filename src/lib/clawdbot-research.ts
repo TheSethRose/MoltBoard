@@ -5,7 +5,7 @@
  */
 
 // Type definitions (shared with API route)
-export type ResearchMode = "task-form" | "closure-summary";
+export type ResearchMode = "task-form" | "closure-summary" | "note-review";
 
 export interface TaskFormResponse {
   title: string;
@@ -24,7 +24,14 @@ export interface ClosureSummaryResponse {
   notesForRecord: string;
 }
 
-export type ResearchResponse = TaskFormResponse | ClosureSummaryResponse;
+export interface NoteReviewResponse {
+  reply: string;
+}
+
+export type ResearchResponse =
+  | TaskFormResponse
+  | ClosureSummaryResponse
+  | NoteReviewResponse;
 
 export interface ResearchRequest {
   type: ResearchMode;
@@ -93,6 +100,26 @@ export async function generateClosureSummary(
 
   if (response && "summary" in response) {
     return response as ClosureSummaryResponse;
+  }
+
+  throw new Error("Invalid response type from research assistant");
+}
+
+/**
+ * Generate a short AI review response for a new work note
+ */
+export async function generateNoteReview(
+  input: string,
+  notes?: string,
+): Promise<NoteReviewResponse> {
+  const response = await researchAssistant({
+    type: "note-review",
+    input,
+    notes,
+  });
+
+  if (response && "reply" in response) {
+    return response as NoteReviewResponse;
   }
 
   throw new Error("Invalid response type from research assistant");
