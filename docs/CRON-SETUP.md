@@ -8,6 +8,7 @@ This guide describes the current cron jobs stored in the Clawdbot gateway. The j
 - `.env` populated (intervals + models)
 - **Note:** Ensure `WORKER_*_MODEL` values are allowed by your gateway allowlist.
 - Set `--thinking high` to match the current worker configuration.
+- **Moltbot Assist runtime:** The dashboard (Next app) runs as the `agent` user in this setup, so the CLI reads config from `/Users/agent/.clawdbot/clawdbot.json` (not your user). Keep that file aligned with your chosen sandbox mode.
 
 ## Sandboxing modes (Docker vs bare metal)
 
@@ -22,6 +23,15 @@ Clawdbot can run worker jobs in two modes. Pick one and align the config + cron 
   - Runs jobs directly on the host.
   - Set `agents.defaults.sandbox.mode: "off"` in `~/.clawdbot/clawdbot.json`.
   - Use `sessionTarget: "main"` for `systemEvent` jobs.
+
+### Moltbot Assist: CLI execution context
+
+Moltbot Assist calls the Clawdbot CLI via the `/api/clawdbot/research` route. In this setup, the Next app runs as `agent`, so:
+
+- The CLI reads config from `/Users/agent/.clawdbot/clawdbot.json`.
+- Invalid sandbox values in that file will break Moltbot Assist.
+- We use the gateway by default (no `--local`). Set `CLAWDBOT_USE_LOCAL=true` only if you intentionally want embedded/local mode.
+- After changing the API route, rebuild as `agent` and restart the dashboard LaunchAgent so the new `.next` output is used.
 
 ## Session + payload rule
 
