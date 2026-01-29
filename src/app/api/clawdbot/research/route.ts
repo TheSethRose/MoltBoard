@@ -136,6 +136,9 @@ async function callClawdbot(
   const thinkingLevel = normalizeThinking(process.env.CLAWDBOT_THINKING);
   const agentId = process.env.CLAWDBOT_AGENT || "main";
   const sessionId = process.env.CLAWDBOT_SESSION_ID || "research";
+  const useLocal =
+    (process.env.CLAWDBOT_USE_LOCAL || "false").trim().toLowerCase() ===
+    "true";
 
   // Write prompt to temp file to avoid shell escaping issues
   const tempFile = `/tmp/clawdbot-prompt-${Date.now()}.txt`;
@@ -153,7 +156,8 @@ async function callClawdbot(
     // Use full path for reliability when running from server context
     const clawdbotPath =
       process.env.CLAWDBOT_PATH || "/opt/homebrew/bin/clawdbot";
-    const cmd = `${clawdbotPath} agent --local --json --thinking ${thinkingLevel} --agent ${agentId} --session-id ${sessionId} --message "$(cat ${tempFile})" 2>&1`;
+    const localFlag = useLocal ? "--local " : "";
+    const cmd = `${clawdbotPath} agent ${localFlag}--json --thinking ${thinkingLevel} --agent ${agentId} --session-id ${sessionId} --message "$(cat ${tempFile})" 2>&1`;
 
     let stdout = "";
     let stderr = "";
