@@ -1,28 +1,24 @@
 /**
  * Moltbot Assist API
  *
- * Provides read-only research assistance using the Pi CLI:
+ * Provides read-only research assistance using pi-ai package:
  * 1. Task form auto-fill: Generates structured task fields from a natural language prompt
  * 2. Closure summary: Generates a summary suitable for GitHub issue closure
  *
  * All responses are structured (JSON) for automatic field mapping.
  *
- * Integration: Uses Clawdbot config files to extract model/API key, then calls Pi directly.
+ * Integration: Reads Clawdbot config files for model/API key, then uses pi-ai directly.
  * The user running this process must have read access to /Users/clawdbot/.clawdbot/ paths.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "node:child_process";
+import { complete, type Model, type Context } from "@mariozechner/pi-ai";
 import fs from "node:fs/promises";
-import path from "node:path";
-import { promisify } from "node:util";
 import {
   withErrorHandling,
   badRequest,
   internalError,
 } from "@/lib/api-error-handler";
-
-const execAsync = promisify(exec);
 
 // --- Clawdbot config paths ---
 const CONFIG_PATH = "/Users/clawdbot/.clawdbot/clawdbot.json";
@@ -43,6 +39,12 @@ interface ClawdbotConfig {
       {
         baseUrl?: string;
         api?: string;
+        models?: Array<{
+          id: string;
+          name?: string;
+          contextWindow?: number;
+          maxTokens?: number;
+        }>;
       }
     >;
   };
@@ -61,11 +63,12 @@ interface AuthProfiles {
 }
 
 /**
- * Extract model, API key, and base URL from Clawdbot config files.
+ * Extract model config and API key from Clawdbot config files.
+ * Returns a pi-ai Model object and the API key.
  */
-async function getClawdbotSecrets(): Promise<{
-  model: string;
-  env: Record<string, string>;
+async function getModelConfig(): Promise<{
+  model: Model<"anthropic-messages">;
+  apiKey: string;
 } | null> {
   try {
     const configRaw = await fs.readFile(CONFIG_PATH, "utf-8");
@@ -73,10 +76,10 @@ async function getClawdbotSecrets(): Promise<{
     const modelId =
       config.agents?.defaults?.model?.primary || "anthropic/claude-sonnet-4-20250514";
 
-    const provider = modelId.split("/")[0];
+    const [provider, modelName] = modelId.split("/");
     const providerConfig = config.models?.providers?.[provider];
-    const baseUrl = providerConfig?.baseUrl;
 
+    // Read auth profiles for API key
     const authRaw = await fs.readFile(AUTH_PATH, "utf-8");
     const auth = JSON.parse(authRaw) as AuthProfiles;
 
@@ -97,21 +100,27 @@ async function getClawdbotSecrets(): Promise<{
       throw new Error(`Auth profile for ${provider} has no API key/token`);
     }
 
-    const envVars: Record<string, string> = {
-      [`${provider.toUpperCase()}_API_KEY`]: apiKey,
+    // Find model details from config
+    const modelDetails = providerConfig?.models?.find((m) => m.id === modelName);
+
+    // Build a custom Model object for pi-ai
+    const model: Model<"anthropic-messages"> = {
+      id: modelName,
+      name: modelDetails?.name || modelName,
+      api: "anthropic-messages",
+      provider: provider,
+      baseUrl: providerConfig?.baseUrl,
+      reasoning: false,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: modelDetails?.contextWindow || 200000,
+      maxTokens: modelDetails?.maxTokens || 8192,
     };
 
-    if (baseUrl) {
-      envVars[`${provider.toUpperCase()}_BASE_URL`] = baseUrl;
-    }
-
-    return {
-      model: modelId,
-      env: envVars,
-    };
+    return { model, apiKey };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.warn(`[SecretExtraction] Failed to read Clawdbot config: ${msg}`);
+    console.error(`[ModelConfig] Failed to read Clawdbot config: ${msg}`);
     return null;
   }
 }
