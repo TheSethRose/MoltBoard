@@ -13,6 +13,7 @@ import {
   withErrorHandling,
   badRequest,
   notFound,
+  forbidden,
   databaseError,
   logError,
 } from "@/lib/api-error-handler";
@@ -522,6 +523,19 @@ export const DELETE = withErrorHandling(
 export const DELETENotes = withErrorHandling(
   async (req: NextRequest): Promise<NextResponse> => {
     try {
+      const uiHeader = req.headers.get("x-moltboard-ui");
+      const host = req.headers.get("host");
+      const origin = req.headers.get("origin");
+      const proto = req.headers.get("x-forwarded-proto") || "http";
+      const allowedOrigin = host ? `${proto}://${host}` : null;
+      const isSameOrigin =
+        Boolean(origin && allowedOrigin && origin === allowedOrigin) ||
+        req.headers.get("sec-fetch-site") === "same-origin";
+
+      if (uiHeader !== "1" || !isSameOrigin) {
+        throw forbidden("This action is only allowed from the UI");
+      }
+
       const { searchParams } = new URL(req.url);
       const taskId = parseInt(searchParams.get("task_id") || "", 10);
       const noteId = searchParams.get("note_id");

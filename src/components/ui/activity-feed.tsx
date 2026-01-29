@@ -181,6 +181,9 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
 
         const res = await fetch(`/api/tasks/notes?${params.toString()}`, {
           method: "DELETE",
+          headers: {
+            "X-Moltboard-UI": "1",
+          },
         });
 
         if (!res.ok) {
