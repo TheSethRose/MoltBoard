@@ -144,7 +144,7 @@ async function main() {
   if (nextTask.notes) {
     console.log(`\nCurrent Notes:\n${nextTask.notes}`);
   }
-  
+
   const notes = parseWorkNotes(nextTask.work_notes);
   if (notes.length > 0) {
     console.log("\nRecent Work Notes:");
@@ -155,7 +155,27 @@ async function main() {
       console.log(`- [${author}] ${ts} ${content}`.trim());
     });
   }
-  
+
+  // Auto-groom: if task has clear scope in notes, auto-mark ready
+  const hasScope = nextTask.notes && (
+    nextTask.notes.includes("## Scope") ||
+    nextTask.notes.includes("## Target") ||
+    nextTask.notes.includes("## Summary")
+  );
+
+  if (hasScope) {
+    // Generate summary from notes
+    const summaryMatch = nextTask.notes.match(/## (Summary|Scope|Target|Goal)[\s\S]*?(?=## |$)/i);
+    const summary = summaryMatch
+      ? `Plan: ${summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 200)}...`
+      : `Review and implement: ${nextTask.text}`;
+
+    console.log("\n✓ Auto-grooming task with clear scope...");
+    await markReady(nextTask.id, summary);
+    process.exit(0);
+  }
+
+  // Manual grooming required
   console.log("\nInstructions:");
   console.log("1) Research and clarify scope, acceptance, and dependencies.");
   console.log("2) Update notes if needed (include plan + definition).");
