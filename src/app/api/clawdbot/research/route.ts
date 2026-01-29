@@ -7,63 +7,20 @@
  *
  * All responses are structured (JSON) for automatic field mapping.
  *
- * Integration: Reads Clawdbot config files for model/API key, then uses pi-ai directly.
- * The user running this process must have read access to /Users/clawdbot/.clawdbot/ paths.
+ * Integration: Reads model/API key from environment variables, then uses pi-ai directly.
+ * Configure CLAWDBOT_MODEL_ID, CLAWDBOT_BASE_URL, CLAWDBOT_API, and provider API key.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { complete, type Model, type Context } from "@mariozechner/pi-ai";
-import fs from "node:fs/promises";
 import {
   withErrorHandling,
   badRequest,
   internalError,
 } from "@/lib/api-error-handler";
 
-// --- Clawdbot config paths ---
-const CONFIG_PATH = "/Users/clawdbot/.clawdbot/clawdbot.json";
-const AUTH_PATH =
-  "/Users/clawdbot/.clawdbot/agents/main/agent/auth-profiles.json";
-
-interface ClawdbotConfig {
-  agents?: {
-    defaults?: {
-      model?: {
-        primary?: string;
-      };
-    };
-  };
-  models?: {
-    providers?: Record<
-      string,
-      {
-        baseUrl?: string;
-        api?: string;
-        models?: Array<{
-          id: string;
-          name?: string;
-          contextWindow?: number;
-          maxTokens?: number;
-        }>;
-      }
-    >;
-  };
-}
-
-interface AuthProfiles {
-  profiles: Record<
-    string,
-    {
-      provider: string;
-      apiKey?: string;
-      token?: string;
-      mode?: string;
-    }
-  >;
-}
-
 /**
- * Extract model config and API key from Clawdbot config files.
+ * Extract model config and API key from environment variables.
  * Returns a pi-ai Model object and the API key.
  */
 async function getModelConfig(): Promise<{
@@ -71,57 +28,54 @@ async function getModelConfig(): Promise<{
   apiKey: string;
 } | null> {
   try {
-    const configRaw = await fs.readFile(CONFIG_PATH, "utf-8");
-    const config = JSON.parse(configRaw) as ClawdbotConfig;
     const modelId =
-      config.agents?.defaults?.model?.primary || "anthropic/claude-sonnet-4-20250514";
+      process.env.CLAWDBOT_MODEL_ID ||
+      process.env.CLAWDBOT_MODEL ||
+      "minimax/MiniMax-M2.1";
 
     const [provider, modelName] = modelId.split("/");
-    const providerConfig = config.models?.providers?.[provider];
-
-    // Read auth profiles for API key
-    const authRaw = await fs.readFile(AUTH_PATH, "utf-8");
-    const auth = JSON.parse(authRaw) as AuthProfiles;
-
-    const profileKey = Object.keys(auth.profiles).find(
-      (key) =>
-        auth.profiles[key].provider === provider ||
-        key.startsWith(`${provider}:`),
-    );
-
-    if (!profileKey) {
-      throw new Error(`No auth profile found for provider: ${provider}`);
-    }
-
-    const profile = auth.profiles[profileKey];
-    const apiKey = profile.apiKey || profile.token;
+    const apiKey =
+      process.env.CLAWDBOT_API_KEY ||
+      process.env[`${provider.toUpperCase()}_API_KEY`] ||
+      process.env.MINIMAX_API_KEY ||
+      "";
 
     if (!apiKey) {
-      throw new Error(`Auth profile for ${provider} has no API key/token`);
+      throw new Error(`Missing API key for provider: ${provider}`);
     }
 
-    // Find model details from config
-    const modelDetails = providerConfig?.models?.find((m) => m.id === modelName);
+    const baseUrl =
+      process.env.CLAWDBOT_BASE_URL ||
+      process.env[`${provider.toUpperCase()}_BASE_URL`] ||
+      process.env.MINIMAX_BASE_URL ||
+      "";
+
+    if (!baseUrl) {
+      throw new Error(`Missing base URL for provider: ${provider}`);
+    }
+
+    const api =
+      (process.env.CLAWDBOT_API as "anthropic-messages") ||
+      "anthropic-messages";
 
     // Build a custom Model object for pi-ai
-    // Use type assertion since baseUrl is optional for the MiniMax provider
     const model = {
       id: modelName,
-      name: modelDetails?.name || modelName,
-      api: "anthropic-messages" as const,
+      name: modelName,
+      api: api,
       provider: provider,
-      baseUrl: providerConfig?.baseUrl || "",
+      baseUrl: baseUrl,
       reasoning: false,
       input: ["text" as const],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: modelDetails?.contextWindow || 200000,
-      maxTokens: modelDetails?.maxTokens || 8192,
+      contextWindow: 200000,
+      maxTokens: 8192,
     } satisfies Model<"anthropic-messages">;
 
     return { model, apiKey };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`[ModelConfig] Failed to read Clawdbot config: ${msg}`);
+    console.error(`[ModelConfig] Failed to read environment config: ${msg}`);
     return null;
   }
 }
@@ -242,6 +196,7 @@ async function callPiAI(
 
     const now = Date.now();
     const context: Context = {
+      systemPrompt: "You are a helpful assistant that outputs only valid JSON.",
       messages: [
         {
           role: "user",
@@ -254,7 +209,6 @@ async function callPiAI(
     const result = await complete(model, context, {
       apiKey,
       maxTokens: 4096,
-      systemPrompt: "You are a helpful assistant that outputs only valid JSON.",
     });
 
     if (!result.content || result.content.length === 0) {
