@@ -42,6 +42,9 @@ export interface WorkNote {
   content: string;
   author: "agent" | "system" | "human";
   timestamp: string;
+  deleted?: boolean;
+  deleted_by?: "agent" | "system" | "human" | null;
+  deleted_at?: string | null;
 }
 
 /** Simplified Task interface for UI components */

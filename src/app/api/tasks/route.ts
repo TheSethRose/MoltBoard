@@ -517,3 +517,89 @@ export const DELETE = withErrorHandling(
   },
   { context: { route: "/api/tasks", method: "DELETE" } },
 );
+
+// DELETE /api/tasks/notes - Delete a work note (soft delete)
+export const DELETENotes = withErrorHandling(
+  async (req: NextRequest): Promise<NextResponse> => {
+    try {
+      const { searchParams } = new URL(req.url);
+      const taskId = parseInt(searchParams.get("task_id") || "", 10);
+      const noteId = searchParams.get("note_id");
+
+      if (isNaN(taskId) || taskId <= 0) {
+        throw badRequest(
+          "task_id is required and must be a valid number",
+          "INVALID_TASK_ID",
+        );
+      }
+
+      if (!noteId || typeof noteId !== "string") {
+        throw badRequest(
+          "note_id is required",
+          "INVALID_NOTE_ID",
+        );
+      }
+
+      const db = await getDb();
+
+      // Check task exists
+      const existing = db
+        .prepare("SELECT * FROM tasks WHERE id = ?")
+        .get(taskId) as DbTask | undefined;
+      if (!existing) {
+        await releaseDb(db);
+        throw notFound(`Task with id ${taskId} not found`);
+      }
+
+      // Parse work notes and find the note to delete
+      const workNotes: WorkNote[] = JSON.parse(existing.work_notes || "[]");
+      const noteIndex = workNotes.findIndex((n) => n.id === noteId);
+
+      if (noteIndex === -1) {
+        await releaseDb(db);
+        throw notFound(`Note with id ${noteId} not found`);
+      }
+
+      // Mark note as deleted
+      const deletedNote = {
+        ...workNotes[noteIndex],
+        deleted: true,
+        deleted_by: "human" as const,
+        deleted_at: new Date().toISOString(),
+      };
+
+      // Create a system note about the deletion
+      const deletionNote: WorkNote = {
+        id: crypto.randomUUID(),
+        content: `Deleted comment: "${workNotes[noteIndex].content.substring(0, 100)}${workNotes[noteIndex].content.length > 100 ? '...' : ''}"`,
+        author: "system",
+        timestamp: new Date().toISOString(),
+      };
+
+      // Update the work notes array
+      const updatedWorkNotes = [...workNotes];
+      updatedWorkNotes[noteIndex] = deletedNote;
+      updatedWorkNotes.push(deletionNote);
+
+      db.prepare("UPDATE tasks SET work_notes = ? WHERE id = ?").run(
+        JSON.stringify(updatedWorkNotes),
+        taskId,
+      );
+
+      await releaseDb(db);
+
+      return NextResponse.json({
+        success: true,
+        noteId,
+        taskId,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "ApiError") {
+        throw error;
+      }
+      logError(error as Error, { route: "/api/tasks/notes", method: "DELETE" });
+      throw databaseError(error);
+    }
+  },
+  { context: { route: "/api/tasks/notes", method: "DELETE" } },
+);

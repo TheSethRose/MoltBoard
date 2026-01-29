@@ -30,12 +30,9 @@ fi
 
 find_dashboard_plist() {
     local override_name=${MOLTBOT_DASHBOARD_PLIST:-}
-    local provided_name=${3:-}
     local plist_name=""
 
-    if [[ -n "$provided_name" ]]; then
-        plist_name="$provided_name"
-    elif [[ -n "$override_name" ]]; then
+    if [[ -n "$override_name" ]]; then
         plist_name="$override_name"
     elif [[ -f "$HOME/Library/LaunchAgents/com.moltbot.dashboard.plist" ]]; then
         plist_name="com.moltbot.dashboard.plist"
@@ -58,7 +55,11 @@ find_dashboard_plist() {
 manage_dashboard() {
     local action=$1
     local plist_path
-    plist_path=$(find_dashboard_plist "$@")
+    plist_path=$(find_dashboard_plist)
+
+    local label
+    label=$(/usr/bin/plutil -p "$plist_path" | /usr/bin/awk -F '=> ' '/"Label"/ {gsub(/[" ]/,"",$2); print $2; exit}')
+    local service="gui/$(id -u)/$label"
 
     rebuild_dashboard() {
         sudo rm -rf "$REPO_ROOT/.next"
@@ -73,16 +74,20 @@ manage_dashboard() {
             launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
             ;;
         restart)
-            launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
-            launchctl bootstrap "gui/$(id -u)" "$plist_path"
+            launchctl kickstart -k "$service" 2>/dev/null || {
+                launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
+                launchctl bootstrap "gui/$(id -u)" "$plist_path"
+            }
             ;;
         rebuild)
             rebuild_dashboard
             ;;
         rebuild-restart)
             rebuild_dashboard
-            launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
-            launchctl bootstrap "gui/$(id -u)" "$plist_path"
+            launchctl kickstart -k "$service" 2>/dev/null || {
+                launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
+                launchctl bootstrap "gui/$(id -u)" "$plist_path"
+            }
             ;;
         status)
             launchctl print "gui/$(id -u)" 2>/dev/null | grep -F "$(basename "$plist_path" .plist)" || true

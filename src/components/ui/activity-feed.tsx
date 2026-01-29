@@ -12,6 +12,7 @@ import {
   ArrowUpDown,
   Filter,
   X,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
     };
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   const LIMIT = 30;
 
@@ -164,6 +166,39 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
       }
     },
     [filters],
+  );
+
+  const handleDeleteNote = useCallback(
+    async (entry: ActivityEntry) => {
+      if (!entry.task_id || !entry.id) return;
+
+      try {
+        setDeletingNoteId(entry.id);
+        const params = new URLSearchParams({
+          task_id: String(entry.task_id),
+          note_id: entry.id.replace("task-note-", ""),
+        });
+
+        const res = await fetch(`/api/tasks/notes?${params.toString()}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to delete note");
+        }
+
+        // Reload activity to reflect the deletion
+        loadActivity(true);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete note",
+        );
+      } finally {
+        setDeletingNoteId(null);
+      }
+    },
+    [loadActivity],
   );
 
   // Reload when filters change
@@ -598,9 +633,28 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
                   <p className="text-sm text-foreground whitespace-pre-wrap">
                     {entry.content}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatTimestamp(entry.timestamp)}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      {formatTimestamp(entry.timestamp)}
+                    </p>
+                    {/* Delete button for task notes */}
+                    {entry.type === "task_note" && entry.author === "human" && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNote(entry)}
+                        disabled={deletingNoteId === entry.id}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 disabled:opacity-50"
+                        title="Delete this comment"
+                      >
+                        {deletingNoteId === entry.id ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
