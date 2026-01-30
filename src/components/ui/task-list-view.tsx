@@ -11,6 +11,7 @@ import {
   ArrowDown,
   Flag,
   MoreHorizontal,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTaskStatuses, formatStatusLabel } from "@/lib/task-statuses";
@@ -28,6 +29,7 @@ interface TaskListViewProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onBulkMove?: (status: Task["status"]) => Promise<void> | void;
+  onBulkArchive?: () => Promise<void> | void;
   onBulkDelete?: () => Promise<void> | void;
   onTaskEdit: (task: Task) => void;
   onTaskDelete: (taskId: number) => void;
@@ -59,6 +61,7 @@ export function TaskListView({
   onSelectAll,
   onDeselectAll,
   onBulkMove,
+  onBulkArchive,
   onBulkDelete,
   onTaskEdit,
   onTaskDelete,
@@ -235,6 +238,25 @@ export function TaskListView({
                       className="text-xs"
                     >
                       Delete Selected
+                    </Button>
+                  )}
+                  {onBulkArchive && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Archive ${selectedTaskIds.size} selected task(s)?`,
+                          )
+                        ) {
+                          onBulkArchive();
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      <Archive size={14} className="mr-1" />
+                      Archive Selected
                     </Button>
                   )}
                 </div>
