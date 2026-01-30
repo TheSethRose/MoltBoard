@@ -8,6 +8,7 @@
  * Uses the MoltBoard API (required for user-based DB isolation).
  */
 
+import fs from "node:fs";
 import apiClient from "../../../scripts/api-client.js";
 
 const DEFAULT_TASK_STATUSES = [
@@ -95,6 +96,65 @@ function hasGroomMarker(workNotes) {
       ? note.content.toLowerCase().includes("groom:")
       : false,
   );
+}
+
+function buildAssistInput(task, projectName) {
+  const tags = Array.isArray(task.tags) ? task.tags.join(", ") : "none";
+  const blocked = Array.isArray(task.blocked_by) && task.blocked_by.length > 0
+    ? task.blocked_by.map((id) => `#${id}`).join(", ")
+    : "none";
+  return [
+    `Title: ${task.text || "(empty)"}`,
+    `Description: ${task.notes || "(empty)"}`,
+    `Status: ${task.status || "unknown"}`,
+    `Project: ${projectName || "none"}`,
+    `Priority: ${task.priority || "none"}`,
+    `Tags: ${tags || "none"}`,
+    `Blocked By: ${blocked}`,
+    `Activity Log (read-only context; do not include in output):`,
+  ].join("\n");
+}
+
+function buildNotesFromAssist(output) {
+  const scope = Array.isArray(output.scope) ? output.scope : [];
+  const outOfScope = Array.isArray(output.outOfScope) ? output.outOfScope : [];
+  const deps = Array.isArray(output.dependencies) ? output.dependencies : [];
+  const criteria = Array.isArray(output.acceptanceCriteria)
+    ? output.acceptanceCriteria
+    : [];
+
+  return [
+    `## Goal\n${output.goal || ""}`,
+    `\n## Scope\n${scope.map((s) => `- ${s}`).join("\n")}`,
+    `\n## Out of Scope\n${outOfScope.map((s) => `- ${s}`).join("\n")}`,
+    `\n## Dependencies\n${deps.map((s) => `- ${s}`).join("\n")}`,
+    `\n## Acceptance Criteria\n${criteria.map((s) => `- ${s}`).join("\n")}`,
+  ].join("\n");
+}
+
+async function runMoltbotAssist(task, projectName) {
+  const input = buildAssistInput(task, projectName);
+  const notes = parseWorkNotes(task.work_notes)
+    .slice(-10)
+    .map((note) => {
+      const author = note?.author || "system";
+      const timestamp = note?.timestamp || "";
+      const content = note?.content || "";
+      return `- [${author}] ${timestamp} ${content}`.trim();
+    })
+    .join("\n");
+
+  const res = await fetch("http://localhost:5278/api/clawdbot/research", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "task-form", input, notes }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error?.message || json?.message || "Assist failed");
+  }
+  return json;
 }
 
 async function markReady(taskId, summary, notesUpdate) {
@@ -227,39 +287,48 @@ async function main() {
   const notes = parseWorkNotes(nextTask.work_notes);
   console.log(`[GROOMER] WORK_NOTES: ${notes.length} entries`);
 
-  // Auto-groom: generate a summary and mark ready
-  // Priority: structured scope > any notes > task title
-  let summary;
-  let groomReason;
-
-  const hasStructuredScope =
-    nextTask.notes &&
-    (nextTask.notes.includes("## Scope") ||
-      nextTask.notes.includes("## Target") ||
-      nextTask.notes.includes("## Summary") ||
-      nextTask.notes.includes("## Goal"));
-
-  if (hasStructuredScope) {
-    // Extract structured section
-    const summaryMatch = nextTask.notes.match(
-      /## (Summary|Scope|Target|Goal)[\s\S]*?(?=## |$)/i,
-    );
-    summary = summaryMatch
-      ? summaryMatch[0].trim().replace(/\n/g, " ").slice(0, 300)
-      : nextTask.text;
-    groomReason = "structured-scope";
-  } else if (nextTask.notes && nextTask.notes.trim().length > 10) {
-    // Use first 300 chars of notes as plan
-    summary = nextTask.notes.trim().replace(/\n/g, " ").slice(0, 300);
-    groomReason = "notes-excerpt";
-  } else {
-    // Fallback: use task title
-    summary = `Implement: ${nextTask.text}`;
-    groomReason = "title-only";
+  let projectName = "";
+  if (nextTask.project_id) {
+    try {
+      const project = await apiClient.getProject(nextTask.project_id);
+      projectName = project?.project?.name || "";
+    } catch {
+      projectName = "";
+    }
   }
 
-  console.log(`[GROOMER] AUTO_GROOM: ${groomReason}`);
-  await markReady(nextTask.id, summary);
+  console.log("[GROOMER] ASSIST: running Moltbot Assist prompt");
+  let assistOutput;
+  try {
+    const assist = await runMoltbotAssist(nextTask, projectName);
+    assistOutput = assist?.output || assist?.result || assist;
+  } catch (err) {
+    console.error("[GROOMER] ASSIST ERROR:", err.message);
+    process.exit(1);
+  }
+
+  const groomedTitle = assistOutput.title || nextTask.text;
+  const groomedNotes = buildNotesFromAssist(assistOutput);
+  const groomedTags = Array.isArray(assistOutput.tags)
+    ? assistOutput.tags
+    : nextTask.tags || [];
+  const groomedPriority = assistOutput.priority || nextTask.priority || null;
+
+  await apiClient.updateTask(nextTask.id, {
+    text: groomedTitle,
+    notes: groomedNotes,
+    tags: groomedTags,
+    priority: groomedPriority,
+  });
+
+  await apiClient.appendWorkNote(
+    nextTask.id,
+    `groom:done: Applied Moltbot Assist (task-form) output to task fields`,
+    "system",
+  );
+
+  await apiClient.updateTaskStatus(nextTask.id, TASK_STATUS.ready);
+  console.log(`[GROOMER] RESULT: Task #${nextTask.task_number} → ${TASK_STATUS.ready}`);
   console.log(`[GROOMER] END: ${new Date().toISOString()}`);
 }
 
