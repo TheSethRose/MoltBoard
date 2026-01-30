@@ -161,6 +161,7 @@ export const PUT = withErrorHandling(
         notes,
         project_id,
         blocked_by,
+        archived_at,
         work_notes,
         append_work_note,
         replace_work_notes,
@@ -226,6 +227,10 @@ export const PUT = withErrorHandling(
       if (blocked_by !== undefined) {
         updates.push("blocked_by = ?");
         params.push(JSON.stringify(blocked_by));
+      }
+      if (archived_at !== undefined) {
+        updates.push("archived_at = ?");
+        params.push(archived_at || null);
       }
 
       // Handle work_notes - either append, merge, or replace

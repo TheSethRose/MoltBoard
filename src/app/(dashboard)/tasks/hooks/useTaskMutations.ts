@@ -138,19 +138,19 @@ export function useTaskMutations({
       if (!task) return;
 
       const prevTasks = tasks;
-      const updatedTasks = prevTasks.map((t) =>
-        t.id === id ? { ...t, status: "completed" as const } : t,
-      );
+      const updatedTasks = prevTasks.filter((t) => t.id !== id);
       setTasks(updatedTasks);
       updateCache(updatedTasks);
 
       try {
+        const archivedAt = new Date().toISOString();
         const res = await fetch("/api/tasks", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id,
             status: "completed",
+            archived_at: archivedAt,
             append_work_note: true,
             work_notes: {
               content: "Task archived from task card",
