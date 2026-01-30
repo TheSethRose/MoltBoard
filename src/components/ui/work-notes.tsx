@@ -8,6 +8,7 @@ import {
   User,
   Clock,
   Loader2,
+  Trash2,
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
@@ -23,6 +24,9 @@ interface WorkNote {
   content: string;
   author: "agent" | "system" | "human";
   timestamp: string;
+  deleted?: boolean;
+  deleted_by?: "agent" | "system" | "human" | null;
+  deleted_at?: string | null;
 }
 
 // Support legacy string arrays and proper WorkNote objects
@@ -31,6 +35,7 @@ type RawNote = WorkNote | string;
 interface WorkNotesProps {
   notes: RawNote[];
   onAddNote: (content: string) => Promise<void>;
+  taskId?: number;
   disabled?: boolean;
   className?: string;
   /** Optional: Enable closure summary for completed tasks */
@@ -59,6 +64,9 @@ function normalizeNotes(rawNotes: RawNote[]): WorkNote[] {
       content: note.content || "",
       author: note.author || "system",
       timestamp: note.timestamp || "",
+      deleted: note.deleted || false,
+      deleted_by: note.deleted_by ?? null,
+      deleted_at: note.deleted_at ?? null,
     };
   });
 }
@@ -66,15 +74,18 @@ function normalizeNotes(rawNotes: RawNote[]): WorkNote[] {
 export function WorkNotes({
   notes: rawNotes,
   onAddNote,
+  taskId,
   disabled = false,
   className,
   enableClosureSummary = false,
   taskTitle = "",
   onClosureSummarySave,
 }: WorkNotesProps) {
-  const notes = normalizeNotes(rawNotes);
+  const notes = normalizeNotes(rawNotes).filter((note) => !note.deleted);
   const [newNote, setNewNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showClosureSummary, setShowClosureSummary] = useState(false);
   const [closureResult, setClosureResult] =
     useState<ClosureSummaryResponse | null>(null);
@@ -119,6 +130,39 @@ export function WorkNotes({
 
     await onClosureSummarySave(summaryText);
     setShowClosureSummary(false);
+  };
+
+  const handleDeleteNote = async (note: WorkNote) => {
+    if (!taskId || !note.id) return;
+    if (!window.confirm("Delete this comment? This cannot be undone.")) return;
+
+    setDeleteError(null);
+    setDeletingNoteId(note.id);
+
+    try {
+      const params = new URLSearchParams({
+        task_id: String(taskId),
+        note_id: note.id,
+      });
+
+      const res = await fetch(`/api/tasks/notes?${params.toString()}`, {
+        method: "DELETE",
+        headers: {
+          "X-Moltboard-UI": "1",
+        },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to delete note");
+      }
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Failed to delete note",
+      );
+    } finally {
+      setDeletingNoteId(null);
+    }
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -199,6 +243,11 @@ export function WorkNotes({
           </button>
         )}
       </div>
+      {deleteError && (
+        <div className="px-3 py-2 text-xs text-destructive border-b border-border">
+          {deleteError}
+        </div>
+      )}
 
       {/* Closure Summary Panel */}
       {enableClosureSummary && showClosureSummary && (
@@ -286,6 +335,22 @@ export function WorkNotes({
                     <span className="text-xs text-muted-foreground">
                       {formatTimestamp(note.timestamp)}
                     </span>
+                    {taskId && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNote(note)}
+                        disabled={deletingNoteId === note.id}
+                        className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 disabled:opacity-50"
+                        title="Delete this comment"
+                      >
+                        {deletingNoteId === note.id ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                        Delete
+                      </button>
+                    )}
                   </div>
                   <p className="text-sm text-foreground whitespace-pre-wrap">
                     {note.content}

@@ -832,6 +832,7 @@ export function TaskModal({
             <WorkNotes
               notes={workNotes || []}
               onAddNote={(content) => handleAddNote(content)}
+              taskId={task?.id}
               disabled={false}
               className="flex-1 h-full min-h-0"
               enableClosureSummary={isEditMode && status === "completed"}
