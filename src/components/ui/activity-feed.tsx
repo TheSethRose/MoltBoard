@@ -195,9 +195,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
         // Reload activity to reflect the deletion
         loadActivity(true);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to delete note",
-        );
+        setError(err instanceof Error ? err.message : "Failed to delete note");
       } finally {
         setDeletingNoteId(null);
       }

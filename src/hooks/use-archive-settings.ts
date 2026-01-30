@@ -16,7 +16,9 @@ const DEFAULT_SETTINGS: ArchiveSettings = {
 let cachedRaw: string | null = null;
 let cachedSettings: ArchiveSettings = DEFAULT_SETTINGS;
 
-function normalizeSettings(input: Partial<ArchiveSettings> | null): ArchiveSettings {
+function normalizeSettings(
+  input: Partial<ArchiveSettings> | null,
+): ArchiveSettings {
   if (!input) return DEFAULT_SETTINGS;
   const daysOldRaw = input.daysOld;
   const daysOld =

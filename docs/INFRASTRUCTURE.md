@@ -210,11 +210,11 @@ Cron entrypoint: `skills/task-manager/scripts/cron-worker.sh` (invokes backups +
 
 Access matrix:
 
-| User | DB Access | Mechanism |
-|------|-----------|-----------|
-| `agent` | Read + Write | Owns data directory |
-| `clawdbot` | None | Permission denied |
-| Subagents | API only | API routes / CLI bridge |
+| User       | DB Access    | Mechanism               |
+| ---------- | ------------ | ----------------------- |
+| `agent`    | Read + Write | Owns data directory     |
+| `clawdbot` | None         | Permission denied       |
+| Subagents  | API only     | API routes / CLI bridge |
 
 ---
 

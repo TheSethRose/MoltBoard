@@ -120,7 +120,7 @@ export function TasksClient({
   // Sync SWR data into local state when it changes
   useEffect(() => {
     if (!data?.tasks) return;
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     setTasks((prevTasks) => {
       // Merge server tasks with local state, preserving local modifications
       const mergedTasks = data.tasks.map((serverTask: Task) => {
@@ -139,7 +139,6 @@ export function TasksClient({
 
       return [...mergedTasks, ...newLocalTasks];
     });
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [data?.tasks, locallyModifiedTasks]);
 
   // Bulk selection state
@@ -210,11 +209,12 @@ export function TasksClient({
         .catch(() => ({ message: "Archive request completed" }));
 
       if (!response.ok) {
-        throw new Error(data.error?.message || data.message || "Archive failed");
+        throw new Error(
+          data.error?.message || data.message || "Archive failed",
+        );
       }
 
-      const message =
-        data.message || `Archived ${data.archived ?? 0} task(s)`;
+      const message = data.message || `Archived ${data.archived ?? 0} task(s)`;
       toast.success(message);
       mutate();
     } catch (error) {
@@ -277,9 +277,7 @@ export function TasksClient({
     prevEditingTaskId.current = editingTask.id;
     const updatedTask = tasks.find((t) => t.id === editingTask.id);
     if (updatedTask && updatedTask !== editingTask) {
-      /* eslint-disable react-hooks/set-state-in-effect */
       setEditingTask(updatedTask);
-      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [tasks, editingTask]);
 

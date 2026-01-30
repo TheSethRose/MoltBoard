@@ -412,7 +412,6 @@ export function TaskModal({
     content: string,
     options?: { author?: WorkNote["author"]; skipAI?: boolean },
   ) => {
-
     const author = options?.author ?? "human";
 
     const newNote = {
@@ -497,8 +496,8 @@ export function TaskModal({
     // Update local state to remove the deleted note
     setWorkNotes((prev) =>
       (prev || []).map((note) =>
-        note.id === noteId ? { ...note, deleted: true } : note
-      )
+        note.id === noteId ? { ...note, deleted: true } : note,
+      ),
     );
     // Refresh data from server to sync parent state
     onRefresh?.();

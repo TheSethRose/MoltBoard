@@ -248,7 +248,8 @@ async function callPiAI(
     // Extract text content from the response
     const textContent = result.content
       .filter(
-        (c): c is { type: "text"; text: string } => c.type === "text" && "text" in c,
+        (c): c is { type: "text"; text: string } =>
+          c.type === "text" && "text" in c,
       )
       .map((c) => c.text)
       .join("");

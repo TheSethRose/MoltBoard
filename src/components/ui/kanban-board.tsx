@@ -120,6 +120,7 @@ export function KanbanBoard({
   onTaskReorder,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onTaskDelete,
+  onTaskArchive,
   onDeleteDirect,
   onTaskEdit,
   onAddClick,

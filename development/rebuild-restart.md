@@ -12,17 +12,20 @@ This document explains how to rebuild and relaunch both the dashboard and the Mo
 
 The Next.js build must be performed as the `agent` user so it can read the database.
 
-1) Rebuild (handles sudo + agent user):
+1. Rebuild (handles sudo + agent user):
+
 - `bun run dashboard:rebuild`
 
 ## Relaunch dashboard (LaunchAgent)
 
-1) Restart the dashboard LaunchAgent:
+1. Restart the dashboard LaunchAgent:
+
 - `bun run dashboard:restart`
 
 ## Relaunch gateway (LaunchDaemon)
 
-1) Restart the gateway LaunchDaemon:
+1. Restart the gateway LaunchDaemon:
+
 - `bun run gateway:restart`
 
 ## Quick verification

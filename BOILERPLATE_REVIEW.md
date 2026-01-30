@@ -1,11 +1,13 @@
 # MoltBoard Boilerplate Review - January 2026
 
 ## Overview
+
 MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind CSS, and SQLite.
 
 ## Core Components
 
 ### UI Components (`src/components/ui/`)
+
 - ✅ activity-feed.tsx - Project activity timeline with filtering
 - ✅ archive-button.tsx - Archive confirmation button (NEW)
 - ✅ badge.tsx - Tag/status badges
@@ -32,9 +34,11 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - ✅ work-notes.tsx - Work notes display
 
 ### Dashboard Components (`src/components/dashboard/`)
+
 - ✅ Sidebar.tsx - Navigation sidebar
 
 ### Pages (`src/app/(dashboard)/`)
+
 - ✅ dashboard/ - Dashboard overview
 - ✅ projects/ - Projects list and detail
 - ✅ tasks/ - Task management (kanban + list views)
@@ -42,6 +46,7 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - ✅ status/ - Status page
 
 ### API Routes (`src/app/api/`)
+
 - ✅ /api/tasks - CRUD for tasks
 - ✅ /api/tasks/archive - Archive old tasks
 - ✅ /api/projects - CRUD for projects
@@ -55,11 +60,13 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - ✅ /api/metrics - Metrics endpoint
 
 ### Hooks (`src/hooks/`, `src/app/(dashboard)/tasks/hooks/`)
+
 - ✅ useArchiveSettings - Archive configuration
 - ✅ useTaskMutations - Task CRUD operations
 - ✅ useKeyboardNav - Keyboard navigation
 
 ### Database
+
 - ✅ SQLite with better-sqlite3
 - ✅ Tasks table with work_notes, blocked_by
 - ✅ Projects table
@@ -68,6 +75,7 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 ## Features Implemented
 
 ### Task Management
+
 - ✅ Kanban board with drag-and-drop
 - ✅ List view with sorting
 - ✅ Task creation, editing, deletion
@@ -79,12 +87,14 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - ✅ Comment deletion with soft-delete
 
 ### Projects
+
 - ✅ Project creation and management
 - ✅ Project activity feed
 - ✅ Project filtering on task board
 - ✅ GitHub integration (issues, sync)
 
 ### UI/UX
+
 - ✅ Dark mode styling
 - ✅ Responsive design
 - ✅ Keyboard shortcuts
@@ -95,6 +105,7 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - ✅ Archive functionality
 
 ## What's Complete
+
 - Core task management functionality
 - Project management
 - Activity feed
@@ -104,6 +115,7 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - Recent items tracking
 
 ## Potential Future Enhancements (not in scope)
+
 - [ ] Team/multi-user support
 - [ ] Real-time sync
 - [ ] Task assignments to users
@@ -114,4 +126,5 @@ MoltBoard is a task management dashboard built with Next.js 16, React, Tailwind 
 - [ ] Task templates
 
 ## Summary
+
 The MoltBoard boilerplate is largely complete. All core functionality for task and project management is implemented. The system uses a clean component architecture with proper hooks separation. No major boilerplate gaps identified.

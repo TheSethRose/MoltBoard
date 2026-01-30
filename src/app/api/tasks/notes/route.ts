@@ -37,7 +37,10 @@ export const DELETE = withErrorHandling(
       const taskNumber = taskNumberParam ? parseInt(taskNumberParam, 10) : NaN;
       const noteId = searchParams.get("note_id");
 
-      if ((isNaN(taskId) || taskId <= 0) && (isNaN(taskNumber) || taskNumber <= 0)) {
+      if (
+        (isNaN(taskId) || taskId <= 0) &&
+        (isNaN(taskNumber) || taskNumber <= 0)
+      ) {
         console.warn("[DELETE /api/tasks/notes] invalid task id", {
           taskIdParam,
           taskNumberParam,
@@ -51,20 +54,19 @@ export const DELETE = withErrorHandling(
 
       if (!noteId || typeof noteId !== "string") {
         console.warn("[DELETE /api/tasks/notes] invalid note id", { noteId });
-        throw badRequest(
-          "note_id is required",
-          "INVALID_NOTE_ID",
-        );
+        throw badRequest("note_id is required", "INVALID_NOTE_ID");
       }
 
       const db = await getDb();
 
       // Check task exists - prefer task_id if valid, fall back to task_number
-      const existing = (!isNaN(taskId) && taskId > 0
-        ? db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId)
-        : db.prepare("SELECT * FROM tasks WHERE task_number = ?").get(taskNumber)) as
-        | DbTask
-        | undefined;
+      const existing = (
+        !isNaN(taskId) && taskId > 0
+          ? db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId)
+          : db
+              .prepare("SELECT * FROM tasks WHERE task_number = ?")
+              .get(taskNumber)
+      ) as DbTask | undefined;
 
       if (!existing) {
         await releaseDb(db);
@@ -105,7 +107,7 @@ export const DELETE = withErrorHandling(
       // Create a system note about the deletion
       const deletionNote: WorkNote = {
         id: crypto.randomUUID(),
-        content: `Deleted comment: "${workNotes[noteIndex].content.substring(0, 100)}${workNotes[noteIndex].content.length > 100 ? '...' : ''}"`,
+        content: `Deleted comment: "${workNotes[noteIndex].content.substring(0, 100)}${workNotes[noteIndex].content.length > 100 ? "..." : ""}"`,
         author: "system",
         timestamp: new Date().toISOString(),
       };
