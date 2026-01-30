@@ -284,6 +284,7 @@ export function TaskModal({
 }: TaskModalProps) {
   const isEditMode = task !== null;
   const lastTaskIdRef = React.useRef<number | null>(null);
+  const lastOpenRef = React.useRef<boolean>(false);
   const [text, setText] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Task["status"]>(DEFAULT_TASK_STATUS);
@@ -297,12 +298,15 @@ export function TaskModal({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
+    const wasOpen = lastOpenRef.current;
+    lastOpenRef.current = open;
     if (!open) return;
 
     const currentTaskId = task?.id ?? null;
     const taskChanged = currentTaskId !== lastTaskIdRef.current;
+    const justOpened = !wasOpen && open;
 
-    if (taskChanged) {
+    if (taskChanged || justOpened) {
       if (task) {
         // Edit mode - populate from task
         setText(task.text);
@@ -314,7 +318,7 @@ export function TaskModal({
         setProjectId(task.project_id || null);
         setWorkNotes(task.work_notes || []);
       } else {
-        // Add mode - reset to defaults
+        // Add mode - reset to defaults on every open
         setText("");
         setNotes("");
         setStatus(defaultStatus);
