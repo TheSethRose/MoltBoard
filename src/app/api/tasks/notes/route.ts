@@ -104,18 +104,9 @@ export const DELETE = withErrorHandling(
         deleted_at: new Date().toISOString(),
       };
 
-      // Create a system note about the deletion
-      const deletionNote: WorkNote = {
-        id: crypto.randomUUID(),
-        content: `Deleted comment: "${workNotes[noteIndex].content.substring(0, 100)}${workNotes[noteIndex].content.length > 100 ? "..." : ""}"`,
-        author: "system",
-        timestamp: new Date().toISOString(),
-      };
-
       // Update the work notes array
       const updatedWorkNotes = [...workNotes];
       updatedWorkNotes[noteIndex] = deletedNote;
-      updatedWorkNotes.push(deletionNote);
 
       db.prepare("UPDATE tasks SET work_notes = ? WHERE id = ?").run(
         JSON.stringify(updatedWorkNotes),
