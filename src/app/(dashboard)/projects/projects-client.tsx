@@ -144,7 +144,7 @@ export default function ProjectsClient() {
 
   // View toggle state
   type ViewMode = "grid" | "list";
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Import from GitHub state
   const [isImportOpen, setIsImportOpen] = useState(false);
