@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectDeleteDialog } from "@/components/ui/project-delete-dialog";
 import { PinButton } from "@/components/ui/pin-button";
-import { Clock, Trash2, Github, Loader2 } from "lucide-react";
+import { ProjectListView } from "@/components/ui/project-list-view";
+import { Clock, Trash2, Github, Loader2, LayoutGrid, List } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -140,6 +141,10 @@ export default function ProjectsClient() {
   });
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  // View toggle state
+  type ViewMode = "grid" | "list";
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Import from GitHub state
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -366,6 +371,30 @@ export default function ProjectsClient() {
           </p>
         </div>
         <div className="flex gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none border-r-0"
+              aria-label="Grid view"
+              title="Grid view"
+            >
+              <LayoutGrid size={16} />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="rounded-l-none"
+              aria-label="List view"
+              title="List view"
+            >
+              <List size={16} />
+            </Button>
+          </div>
+
           <Dialog
             open={isImportOpen}
             onOpenChange={(open) => {
@@ -763,6 +792,13 @@ export default function ProjectsClient() {
             </p>
           </div>
         </div>
+      ) : viewMode === "list" ? (
+        <ProjectListView
+          projects={projects}
+          onEditClick={handleEditClick}
+          onDeleteClick={handleDeleteClick}
+          className="border rounded-lg bg-card"
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
