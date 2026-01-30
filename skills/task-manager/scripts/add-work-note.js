@@ -4,6 +4,8 @@
  * Usage:
  *   bun add-work-note.js --task-id <id> --content "..." [--author system|agent|human]
  *   bun add-work-note.js --task-number <num> --content "..." [--author system|agent|human]
+ *   bun add-work-note.js --task-id <id> --content-file /path/to/file [--author system|agent|human]
+ *   bun add-work-note.js --task-id <id> --content-stdin [--author system|agent|human]
  *
  * Uses the MoltBoard API (required for user-based DB isolation).
  * Falls back to direct SQLite only if API is unavailable AND DB is accessible.
@@ -22,13 +24,29 @@ function getArgValue(flag) {
   return process.argv[index + 1] || null;
 }
 
+function hasFlag(flag) {
+  return process.argv.includes(flag);
+}
+
+function readStdin() {
+  try {
+    return fs.readFileSync(0, "utf8");
+  } catch {
+    return "";
+  }
+}
+
 const taskId = parseInt(getArgValue("--task-id") || "", 10);
 const taskNumber = parseInt(getArgValue("--task-number") || "", 10);
-const content = getArgValue("--content");
+const contentArg = getArgValue("--content");
+const contentFile = getArgValue("--content-file");
+const contentFromStdin = hasFlag("--content-stdin") ? readStdin() : "";
+const contentFromFile = contentFile ? fs.readFileSync(contentFile, "utf8") : "";
+const content = contentArg || contentFromFile || contentFromStdin;
 const author = getArgValue("--author") || "system";
 
 if (!content || !content.trim()) {
-  console.log("--content is required");
+  console.log("--content is required (or use --content-file / --content-stdin)");
   process.exit(1);
 }
 

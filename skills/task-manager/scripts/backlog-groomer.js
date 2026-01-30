@@ -54,6 +54,30 @@ function getArgValue(flag) {
   return process.argv[index + 1] || null;
 }
 
+function hasFlag(flag) {
+  return process.argv.includes(flag);
+}
+
+function readStdin() {
+  try {
+    return fs.readFileSync(0, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function readArgOrFile({ value, fileFlag, stdinFlag }) {
+  if (value) return value;
+  const filePath = getArgValue(fileFlag);
+  if (filePath) {
+    return fs.readFileSync(filePath, "utf8");
+  }
+  if (hasFlag(stdinFlag)) {
+    return readStdin();
+  }
+  return "";
+}
+
 function parseWorkNotes(workNotes) {
   if (!workNotes) return [];
   if (Array.isArray(workNotes)) return workNotes;
@@ -137,10 +161,26 @@ async function main() {
 
   const markReadyId = parseInt(getArgValue("--mark-ready") || "", 10);
   const markBlockedId = parseInt(getArgValue("--mark-blocked") || "", 10);
-  const summaryArg = getArgValue("--summary");
-  const reasonArg = getArgValue("--reason");
-  const notesArg = getArgValue("--notes");
-  const activityArg = getArgValue("--activity");
+  const summaryArg = readArgOrFile({
+    value: getArgValue("--summary"),
+    fileFlag: "--summary-file",
+    stdinFlag: "--summary-stdin",
+  });
+  const reasonArg = readArgOrFile({
+    value: getArgValue("--reason"),
+    fileFlag: "--reason-file",
+    stdinFlag: "--reason-stdin",
+  });
+  const notesArg = readArgOrFile({
+    value: getArgValue("--notes"),
+    fileFlag: "--notes-file",
+    stdinFlag: "--notes-stdin",
+  });
+  const activityArg = readArgOrFile({
+    value: getArgValue("--activity"),
+    fileFlag: "--activity-file",
+    stdinFlag: "--activity-stdin",
+  });
 
   if (markReadyId) {
     await markReady(markReadyId, summaryArg, notesArg);

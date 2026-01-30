@@ -245,6 +245,16 @@ export const PUT = withErrorHandling(
             "WORK_NOTES_REQUIRED",
           );
         }
+        const noteContentLength =
+          typeof work_notes === "string"
+            ? work_notes.length
+            : typeof work_notes === "object" && work_notes
+              ? String((work_notes as RawWorkNote & { content?: string })?.content || "").length
+              : 0;
+        console.info("[tasks][PUT] append_work_note", {
+          taskId: id,
+          contentLength: noteContentLength,
+        });
         currentWorkNotes = appendWorkNote(
           currentWorkNotes,
           work_notes as RawWorkNote,
