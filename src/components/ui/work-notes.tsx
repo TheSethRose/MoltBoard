@@ -36,6 +36,7 @@ interface WorkNotesProps {
   notes: RawNote[];
   onAddNote: (content: string) => Promise<void>;
   taskId?: number;
+  taskNumber?: number;
   disabled?: boolean;
   className?: string;
   /** Optional: Enable closure summary for completed tasks */
@@ -75,6 +76,7 @@ export function WorkNotes({
   notes: rawNotes,
   onAddNote,
   taskId,
+  taskNumber,
   disabled = false,
   className,
   enableClosureSummary = false,
@@ -133,7 +135,7 @@ export function WorkNotes({
   };
 
   const handleDeleteNote = async (note: WorkNote) => {
-    if (!taskId || !note.id) return;
+    if ((!taskId && !taskNumber) || !note.id) return;
     if (!window.confirm("Delete this comment? This cannot be undone.")) return;
 
     setDeleteError(null);
@@ -141,9 +143,14 @@ export function WorkNotes({
 
     try {
       const params = new URLSearchParams({
-        task_id: String(taskId),
         note_id: note.id,
       });
+
+      if (taskId) {
+        params.set("task_id", String(taskId));
+      } else if (taskNumber) {
+        params.set("task_number", String(taskNumber));
+      }
 
       const res = await fetch(`/api/tasks/notes?${params.toString()}`, {
         method: "DELETE",
