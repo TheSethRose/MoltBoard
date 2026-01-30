@@ -49,21 +49,31 @@ export const GET = withErrorHandling(
   async (req: NextRequest): Promise<NextResponse> => {
     const url = req.nextUrl.searchParams.get("url");
 
+    console.info("[import-github][GET] request", {
+      url,
+      userAgent: req.headers.get("user-agent"),
+    });
+
     if (!url) {
+      console.warn("[import-github][GET] missing url param");
       throw badRequest("GitHub URL is required", "MISSING_URL");
     }
 
     const parsed = parseGitHubUrl(url);
     if (!parsed) {
+      console.warn("[import-github][GET] invalid url format", { url });
       throw badRequest("Invalid GitHub URL format", "INVALID_URL");
     }
 
     try {
+      const cmd = `gh repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`;
+      console.info("[import-github][GET] fetching repo info", {
+        owner: parsed.owner,
+        repo: parsed.repo,
+        cmd,
+      });
       // Use gh CLI to fetch repo info (handles auth automatically)
-      const { stdout } = await execAsync(
-        `gh repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`,
-        { timeout: 30000 },
-      );
+      const { stdout } = await execAsync(cmd, { timeout: 30000 });
 
       const repoData = JSON.parse(stdout);
 
@@ -77,7 +87,11 @@ export const GET = withErrorHandling(
       });
     } catch (error) {
       const err = error as Error & { stderr?: string };
-      console.error("Failed to fetch GitHub repo info:", err);
+      console.error("[import-github][GET] failed to fetch repo info", {
+        message: err.message,
+        stderr: err.stderr,
+        url,
+      });
 
       if (err.stderr?.includes("Could not resolve")) {
         throw badRequest(
