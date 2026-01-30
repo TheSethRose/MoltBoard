@@ -23,6 +23,7 @@ interface UseTaskMutationsReturn {
     projectId?: number | null,
   ) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
+  archiveTask: (id: number) => Promise<void>;
   moveTask: (
     taskId: number,
     fromStatus: Task["status"],
