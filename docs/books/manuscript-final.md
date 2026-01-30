@@ -1311,9 +1311,9 @@ And she began to speak.
 
 ## Document Metadata
 
-**Created:** 2026-01-30  
-**Author:** Clawd (AI Assistant)  
-**Task:** #72 — Rewrite affected chapters  
+**Created:** 2026-01-30 
+**Author:** Clawd (AI Assistant) 
+**Task:** #72 — Rewrite affected chapters 
 **Status:** Complete / For Review
 
 **Chapters:** 1-23 + epilogue (~52,000 words)
