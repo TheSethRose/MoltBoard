@@ -14,6 +14,9 @@ import {
 
 const execAsync = promisify(exec);
 
+// Full path to gh CLI since launchd doesn't have Homebrew in PATH
+const GH_PATH = process.env.GH_PATH || "/opt/homebrew/bin/gh";
+
 interface GitHubRepoInfo {
   name: string;
   description: string | null;
@@ -66,7 +69,7 @@ export const GET = withErrorHandling(
     }
 
     try {
-      const cmd = `gh repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`;
+      const cmd = `${GH_PATH} repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`;
       console.info("[import-github][GET] fetching repo info", {
         owner: parsed.owner,
         repo: parsed.repo,
@@ -135,7 +138,7 @@ export const POST = withErrorHandling(
       let repoInfo: GitHubRepoInfo;
       try {
         const { stdout } = await execAsync(
-          `gh repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`,
+          `${GH_PATH} repo view ${parsed.owner}/${parsed.repo} --json name,description,url,defaultBranchRef`,
           { timeout: 30000 },
         );
         const repoData = JSON.parse(stdout);
@@ -190,7 +193,7 @@ export const POST = withErrorHandling(
       // Clone the repository using gh CLI
       try {
         await execAsync(
-          `gh repo clone ${parsed.owner}/${parsed.repo} "${workspacePath}"`,
+          `${GH_PATH} repo clone ${parsed.owner}/${parsed.repo} "${workspacePath}"`,
           { timeout: 120000 }, // 2 minute timeout for clone
         );
       } catch (error) {
