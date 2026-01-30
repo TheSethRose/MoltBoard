@@ -66,6 +66,17 @@ manage_dashboard() {
         sudo -u agent -H bash -lc "cd \"$REPO_ROOT\" && bun run build"
     }
 
+    # Force-kill the dashboard process (runs as agent, so kickstart won't work)
+    kill_dashboard_process() {
+        local pid
+        pid=$(pgrep -f "next start -p 5278" | head -n 1 || true)
+        if [[ -n "$pid" ]]; then
+            echo "Killing dashboard process (PID: $pid)..."
+            sudo kill "$pid" 2>/dev/null || true
+            sleep 2
+        fi
+    }
+
     case "$action" in
         start)
             launchctl bootstrap "gui/$(id -u)" "$plist_path"
@@ -74,20 +85,14 @@ manage_dashboard() {
             launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
             ;;
         restart)
-            launchctl kickstart -k "$service" 2>/dev/null || {
-                launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
-                launchctl bootstrap "gui/$(id -u)" "$plist_path"
-            }
+            kill_dashboard_process
             ;;
         rebuild)
             rebuild_dashboard
             ;;
         rebuild-restart)
             rebuild_dashboard
-            launchctl kickstart -k "$service" 2>/dev/null || {
-                launchctl bootout "gui/$(id -u)" "$plist_path" 2>/dev/null || true
-                launchctl bootstrap "gui/$(id -u)" "$plist_path"
-            }
+            kill_dashboard_process
             ;;
         status)
             launchctl print "gui/$(id -u)" 2>/dev/null | grep -F "$(basename "$plist_path" .plist)" || true
