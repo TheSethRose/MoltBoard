@@ -176,6 +176,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
         setDeletingNoteId(entry.id);
         const params = new URLSearchParams({
           task_id: String(entry.task_id),
+          task_number: String(entry.task_number || ""),
           note_id: entry.id.replace("task-note-", ""),
         });
 

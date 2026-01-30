@@ -537,12 +537,15 @@ export const DELETENotes = withErrorHandling(
       }
 
       const { searchParams } = new URL(req.url);
-      const taskId = parseInt(searchParams.get("task_id") || "", 10);
+      const taskIdParam = searchParams.get("task_id");
+      const taskNumberParam = searchParams.get("task_number");
+      const taskId = taskIdParam ? parseInt(taskIdParam, 10) : NaN;
+      const taskNumber = taskNumberParam ? parseInt(taskNumberParam, 10) : NaN;
       const noteId = searchParams.get("note_id");
 
-      if (isNaN(taskId) || taskId <= 0) {
+      if ((isNaN(taskId) || taskId <= 0) && (isNaN(taskNumber) || taskNumber <= 0)) {
         throw badRequest(
-          "task_id is required and must be a valid number",
+          "task_id or task_number is required and must be a valid number",
           "INVALID_TASK_ID",
         );
       }
@@ -557,12 +560,18 @@ export const DELETENotes = withErrorHandling(
       const db = await getDb();
 
       // Check task exists
-      const existing = db
-        .prepare("SELECT * FROM tasks WHERE id = ?")
-        .get(taskId) as DbTask | undefined;
+      const existing = (isNaN(taskId) || taskId <= 0
+        ? db.prepare("SELECT * FROM tasks WHERE task_number = ?").get(taskNumber)
+        : db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId)) as
+        | DbTask
+        | undefined;
       if (!existing) {
         await releaseDb(db);
-        throw notFound(`Task with id ${taskId} not found`);
+        throw notFound(
+          isNaN(taskId) || taskId <= 0
+            ? `Task with number ${taskNumber} not found`
+            : `Task with id ${taskId} not found`,
+        );
       }
 
       // Parse work notes and find the note to delete
@@ -605,7 +614,7 @@ export const DELETENotes = withErrorHandling(
       return NextResponse.json({
         success: true,
         noteId,
-        taskId,
+        taskId: existing.id,
       });
     } catch (error) {
       if (error instanceof Error && error.name === "ApiError") {

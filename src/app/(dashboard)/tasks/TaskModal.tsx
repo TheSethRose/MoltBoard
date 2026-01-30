@@ -833,6 +833,7 @@ export function TaskModal({
               notes={workNotes || []}
               onAddNote={(content) => handleAddNote(content)}
               taskId={task?.id}
+              taskNumber={task?.task_number}
               disabled={false}
               className="flex-1 h-full min-h-0"
               enableClosureSummary={isEditMode && status === "completed"}
