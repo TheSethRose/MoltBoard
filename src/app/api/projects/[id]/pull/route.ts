@@ -74,15 +74,21 @@ export const POST = withErrorHandling(
         localPath: project.local_path,
       });
 
-      await execFileAsync(GIT_PATH, ["fetch", "origin"], {
+      const safeDirectoryArg = `safe.directory=${project.local_path}`;
+
+      await execFileAsync(GIT_PATH, ["-c", safeDirectoryArg, "fetch", "origin"], {
         cwd: project.local_path,
         timeout: 60000,
       });
 
-      const { stdout } = await execFileAsync(GIT_PATH, ["pull", "--ff-only"], {
+      const { stdout } = await execFileAsync(
+        GIT_PATH,
+        ["-c", safeDirectoryArg, "pull", "--ff-only"],
+        {
         cwd: project.local_path,
         timeout: 60000,
-      });
+        },
+      );
 
       return NextResponse.json({
         success: true,
