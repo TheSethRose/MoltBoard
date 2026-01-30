@@ -359,9 +359,13 @@ export const PUT = withErrorHandling(
         );
       }
 
-      // Auto-unblock: When a task is completed, remove its task_number from other tasks' blocked_by arrays
-      // This runs AFTER the update so the task is confirmed completed
-      if (status === "completed" && existing.status !== "completed") {
+      // Auto-unblock: When a task is completed or moved to review, remove its task_number from other tasks' blocked_by arrays
+      // This runs AFTER the update so the task is confirmed completed/reviewed
+      const shouldUnblock =
+        status !== undefined &&
+        status !== existing.status &&
+        (status === "completed" || status === "review");
+      if (shouldUnblock) {
         const taskNumber = existing.task_number;
         if (taskNumber) {
           // More precise query - escape brackets for LIKE or use GLOB
