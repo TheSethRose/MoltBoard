@@ -13,6 +13,7 @@ import {
 } from "@/lib/api-error-handler";
 
 const execFileAsync = promisify(execFile);
+const GIT_PATH = process.env.GIT_PATH || "/usr/bin/git";
 
 async function ensureGitRepo(localPath: string) {
   const gitDir = path.join(localPath, ".git");
@@ -68,12 +69,17 @@ export const POST = withErrorHandling(
 
       await ensureGitRepo(project.local_path);
 
-      await execFileAsync("git", ["fetch", "origin"], {
+      console.info("[pull-latest] starting", {
+        projectId,
+        localPath: project.local_path,
+      });
+
+      await execFileAsync(GIT_PATH, ["fetch", "origin"], {
         cwd: project.local_path,
         timeout: 60000,
       });
 
-      const { stdout } = await execFileAsync("git", ["pull", "--ff-only"], {
+      const { stdout } = await execFileAsync(GIT_PATH, ["pull", "--ff-only"], {
         cwd: project.local_path,
         timeout: 60000,
       });
@@ -86,6 +92,11 @@ export const POST = withErrorHandling(
       if (error instanceof Error && error.name === "ApiError") {
         throw error;
       }
+      const err = error as Error & { stderr?: string };
+      console.error("[pull-latest] failed", {
+        message: err.message,
+        stderr: err.stderr,
+      });
       logError(error as Error, {
         route: "/api/projects/[id]/pull",
         method: "POST",
