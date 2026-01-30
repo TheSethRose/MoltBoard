@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import type { KanbanTask } from "./types";
 import { DeleteButton } from "../delete-button";
+import { ArchiveButton } from "../archive-button";
 
 interface TaskCardProps {
   task: KanbanTask;
@@ -17,6 +18,7 @@ interface TaskCardProps {
   onEdit: () => void;
   onSelect: () => void;
   onDelete: () => void;
+  onArchive?: () => void;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -36,6 +38,7 @@ export function TaskCard({
   onEdit,
   onSelect,
   onDelete,
+  onArchive,
   onDragStart,
   onDragOver,
   onDrop,
@@ -113,6 +116,13 @@ export function TaskCard({
           #{task.task_number > 0 ? task.task_number : "?"}
         </button>
         <DeleteButton onDelete={onDelete} size="sm" ariaLabel="Delete task" />
+        {onArchive && (
+          <ArchiveButton
+            onArchive={onArchive}
+            size="sm"
+            ariaLabel="Archive task"
+          />
+        )}
       </div>
 
       {task.tags && task.tags.length > 0 && (

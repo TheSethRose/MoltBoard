@@ -96,6 +96,7 @@ export function TasksClient({
   const {
     addTask,
     deleteTask,
+    archiveTask,
     moveTask,
     saveTask,
     reorderTasks,
@@ -364,6 +365,7 @@ export function TasksClient({
           onTaskMove={moveTask}
           onTaskReorder={reorderTasks}
           onTaskDelete={confirmDeleteTask}
+          onTaskArchive={archiveTask}
           onDeleteDirect={(id) => deleteTask(id)}
           onTaskEdit={openEditModal}
           onAddClick={openAddModal}

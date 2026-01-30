@@ -36,6 +36,7 @@ export interface KanbanBoardProps {
   ) => void;
   onTaskReorder?: (status: KanbanTask["status"], taskIds: number[]) => void;
   onTaskDelete?: (taskId: number) => void;
+  onTaskArchive?: (taskId: number) => void;
   onDeleteDirect?: (taskId: number) => void;
   onTaskEdit?: (task: KanbanTask) => void;
   onAddClick?: (status: KanbanTask["status"]) => void;
@@ -440,6 +441,7 @@ export function KanbanBoard({
               onTaskEdit={(task) => onTaskEdit?.(task)}
               onTaskSelect={(taskId) => onTaskSelect?.(taskId)}
               onDeleteDirect={(taskId) => onDeleteDirect?.(taskId)}
+              onTaskArchive={(taskId) => onTaskArchive?.(taskId)}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDrop={handleDrop}

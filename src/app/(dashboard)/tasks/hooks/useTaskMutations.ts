@@ -130,6 +130,44 @@ export function useTaskMutations({
     [tasks, setTasks, updateCache],
   );
 
+  // Optimistic archive - move task to completed with archive flag
+  const archiveTask = useCallback(
+    async (id: number) => {
+      const task = tasks.find((t) => t.id === id);
+      if (!task) return;
+
+      const prevTasks = tasks;
+      const updatedTasks = prevTasks.map((t) =>
+        t.id === id ? { ...t, status: "completed" as const } : t,
+      );
+      setTasks(updatedTasks);
+      updateCache(updatedTasks);
+
+      try {
+        const res = await fetch("/api/tasks", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            status: "completed",
+            append_work_note: true,
+            work_notes: {
+              content: "Task archived from task card",
+              author: "human",
+            },
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to archive");
+        toast.success("Task archived");
+      } catch {
+        setTasks(prevTasks);
+        updateCache(prevTasks);
+        toast.error("Failed to archive task");
+      }
+    },
+    [tasks, setTasks, updateCache],
+  );
+
   // Quick add - add to specified status with defaults
   const quickAdd = useCallback(
     (text: string, defaultStatus: Task["status"]) => {
@@ -310,6 +348,7 @@ export function useTaskMutations({
   return {
     addTask,
     deleteTask,
+    archiveTask,
     moveTask,
     saveTask,
     reorderTasks,

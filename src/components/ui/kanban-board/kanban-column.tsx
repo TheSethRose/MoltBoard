@@ -32,6 +32,7 @@ interface KanbanColumnProps {
   onTaskEdit: (task: KanbanTask) => void;
   onTaskSelect: (taskId: number) => void;
   onDeleteDirect: (taskId: number) => void;
+  onTaskArchive: (taskId: number) => void;
   onDragStart: (
     task: KanbanTask,
     status: KanbanTask["status"],
@@ -68,6 +69,7 @@ export function KanbanColumn({
   onTaskEdit,
   onTaskSelect,
   onDeleteDirect,
+  onTaskArchive,
   onDragStart,
   onDragOver,
   onDrop,
@@ -141,6 +143,7 @@ export function KanbanColumn({
               onEdit={() => onTaskEdit(task)}
               onSelect={() => onTaskSelect(task.id)}
               onDelete={() => onDeleteDirect(task.id)}
+              onArchive={() => onTaskArchive(task.id)}
               onDragStart={() => onDragStart(task, column.id, index)}
               onDragOver={(e) => onDragOver(e, column.id, index)}
               onDrop={(e) => onDrop(e, column.id, index)}
