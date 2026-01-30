@@ -266,6 +266,8 @@ interface TaskModalProps {
     projectId: number | null,
   ) => void;
   onDelete?: (id: number) => void;
+  /** Callback to trigger data refresh from server */
+  onRefresh?: () => void;
 }
 
 export function TaskModal({
@@ -278,6 +280,7 @@ export function TaskModal({
   defaultProjectId,
   onSave,
   onDelete,
+  onRefresh,
 }: TaskModalProps) {
   const isEditMode = task !== null;
   const lastTaskIdRef = React.useRef<number | null>(null);
@@ -484,6 +487,17 @@ export function TaskModal({
     } catch (err) {
       console.error("Failed to generate AI note review:", err);
     }
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    // Update local state to remove the deleted note
+    setWorkNotes((prev) =>
+      (prev || []).map((note) =>
+        note.id === noteId ? { ...note, deleted: true } : note
+      )
+    );
+    // Refresh data from server to sync parent state
+    onRefresh?.();
   };
 
   const buildResearchInput = () => {
@@ -832,6 +846,7 @@ export function TaskModal({
             <WorkNotes
               notes={workNotes || []}
               onAddNote={(content) => handleAddNote(content)}
+              onDeleteNote={handleDeleteNote}
               taskId={task?.id}
               taskNumber={task?.task_number}
               disabled={false}

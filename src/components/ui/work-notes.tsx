@@ -35,6 +35,8 @@ type RawNote = WorkNote | string;
 interface WorkNotesProps {
   notes: RawNote[];
   onAddNote: (content: string) => Promise<void>;
+  /** Optional: Callback when a note is deleted - parent should update its state */
+  onDeleteNote?: (noteId: string) => void;
   taskId?: number;
   taskNumber?: number;
   disabled?: boolean;
@@ -75,6 +77,7 @@ function normalizeNotes(rawNotes: RawNote[]): WorkNote[] {
 export function WorkNotes({
   notes: rawNotes,
   onAddNote,
+  onDeleteNote,
   taskId,
   taskNumber,
   disabled = false,
@@ -170,6 +173,9 @@ export function WorkNotes({
         });
         throw new Error(error.message || "Failed to delete note");
       }
+
+      // Notify parent to update its state
+      onDeleteNote?.(note.id);
     } catch (err) {
       console.warn("[WorkNotes] delete note error", err);
       setDeleteError(

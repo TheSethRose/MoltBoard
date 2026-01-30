@@ -459,6 +459,7 @@ export function TasksClient({
         defaultProjectId={projectId}
         onSave={handleSaveTask}
         onDelete={deleteTask}
+        onRefresh={() => mutate()}
       />
 
       <ConfirmationDialog
