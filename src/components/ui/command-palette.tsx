@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -255,6 +256,9 @@ export function CommandPalette({
             <Search size={16} className="text-muted-foreground" />
             <span>Command Palette</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Search tasks and projects or run commands.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-4 pb-2">

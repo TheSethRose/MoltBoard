@@ -23,6 +23,7 @@ import { Clock, Trash2, Github, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -381,6 +382,9 @@ export default function ProjectsClient() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Import from GitHub</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Import a GitHub repository as a project.
+                </DialogDescription>
               </DialogHeader>
               {(isFetchingInfo || isImporting) && (
                 <div
@@ -518,6 +522,9 @@ export default function ProjectsClient() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Project</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Create a new project for tracking tasks.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateProject} className="space-y-4">
                 <div className="space-y-2">
@@ -637,6 +644,9 @@ export default function ProjectsClient() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Edit Project</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Update the project name, description, and settings.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleUpdateProject} className="space-y-4">
                 <div className="space-y-2">

@@ -1444,6 +1444,9 @@ export default function ProjectDetailClient({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Project Settings</DialogTitle>
+            <DialogDescription className="sr-only">
+              Edit project details and sync settings.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
