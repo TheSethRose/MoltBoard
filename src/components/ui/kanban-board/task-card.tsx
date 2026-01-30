@@ -112,7 +112,7 @@ export function TaskCard({
         >
           #{task.task_number > 0 ? task.task_number : "?"}
         </button>
-        <DeleteButton onDelete={onDelete} size="sm" />
+        <DeleteButton onDelete={onDelete} size="sm" ariaLabel="Delete task" />
       </div>
 
       {task.tags && task.tags.length > 0 && (

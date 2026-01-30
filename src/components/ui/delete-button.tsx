@@ -10,6 +10,9 @@ interface DeleteButtonProps {
   size?: "sm" | "md";
   className?: string;
   disabled?: boolean;
+  ariaLabel?: string;
+  confirmAriaLabel?: string;
+  cancelAriaLabel?: string;
 }
 
 const sizeConfig = {
@@ -22,6 +25,9 @@ export function DeleteButton({
   size = "sm",
   className,
   disabled,
+  ariaLabel = "Delete",
+  confirmAriaLabel = "Confirm delete",
+  cancelAriaLabel = "Cancel",
 }: DeleteButtonProps) {
   const [isConfirming, setIsConfirming] = React.useState(false);
   const [isMounted, setIsMounted] = React.useState(false);
@@ -74,7 +80,7 @@ export function DeleteButton({
                 "inline-flex items-center justify-center rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/80 transition-colors cursor-pointer touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 sizeConfig[size].button,
               )}
-              aria-label="Confirm delete"
+              aria-label={confirmAriaLabel}
             >
               <Check className={sizeConfig[size].icon} />
             </button>
@@ -84,7 +90,7 @@ export function DeleteButton({
                 "inline-flex items-center justify-center rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer touch-action-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 sizeConfig[size].button,
               )}
-              aria-label="Cancel"
+              aria-label={cancelAriaLabel}
             >
               <X className={sizeConfig[size].icon} />
             </button>
@@ -102,7 +108,7 @@ export function DeleteButton({
               sizeConfig[size].button,
               disabled && "opacity-50 cursor-not-allowed",
             )}
-            aria-label="Delete task"
+            aria-label={ariaLabel}
           >
             <Trash2 className={sizeConfig[size].icon} />
           </motion.button>

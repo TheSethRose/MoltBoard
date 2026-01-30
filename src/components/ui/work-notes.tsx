@@ -8,11 +8,11 @@ import {
   User,
   Clock,
   Loader2,
-  Trash2,
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DeleteButton } from "@/components/ui/delete-button";
 import {
   ResearchButton,
   ClosureSummaryResult,
@@ -139,7 +139,6 @@ export function WorkNotes({
 
   const handleDeleteNote = async (note: WorkNote) => {
     if ((!taskId && !taskNumber) || !note.id) return;
-    if (!window.confirm("Delete this comment? This cannot be undone.")) return;
 
     setDeleteError(null);
     setDeletingNoteId(note.id);
@@ -357,20 +356,15 @@ export function WorkNotes({
                       {formatTimestamp(note.timestamp)}
                     </span>
                     {taskId && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteNote(note)}
+                      <DeleteButton
+                        onDelete={() => handleDeleteNote(note)}
+                        size="sm"
                         disabled={deletingNoteId === note.id}
-                        className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 disabled:opacity-50"
-                        title="Delete this comment"
-                      >
-                        {deletingNoteId === note.id ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={12} />
-                        )}
-                        Delete
-                      </button>
+                        className="ml-auto"
+                        ariaLabel="Delete comment"
+                        confirmAriaLabel="Confirm delete comment"
+                        cancelAriaLabel="Cancel delete"
+                      />
                     )}
                   </div>
                   <p className="text-sm text-foreground whitespace-pre-wrap">
