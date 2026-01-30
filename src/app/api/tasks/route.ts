@@ -533,6 +533,13 @@ export const DELETENotes = withErrorHandling(
         req.headers.get("sec-fetch-site") === "same-origin";
 
       if (uiHeader !== "1" || !isSameOrigin) {
+        console.warn("[DELETE /api/tasks/notes] blocked non-UI request", {
+          uiHeader,
+          origin,
+          host,
+          allowedOrigin,
+          secFetchSite: req.headers.get("sec-fetch-site"),
+        });
         throw forbidden("This action is only allowed from the UI");
       }
 
@@ -544,6 +551,11 @@ export const DELETENotes = withErrorHandling(
       const noteId = searchParams.get("note_id");
 
       if ((isNaN(taskId) || taskId <= 0) && (isNaN(taskNumber) || taskNumber <= 0)) {
+        console.warn("[DELETE /api/tasks/notes] invalid task id", {
+          taskIdParam,
+          taskNumberParam,
+          noteId,
+        });
         throw badRequest(
           "task_id or task_number is required and must be a valid number",
           "INVALID_TASK_ID",
@@ -551,6 +563,7 @@ export const DELETENotes = withErrorHandling(
       }
 
       if (!noteId || typeof noteId !== "string") {
+        console.warn("[DELETE /api/tasks/notes] invalid note id", { noteId });
         throw badRequest(
           "note_id is required",
           "INVALID_NOTE_ID",
@@ -567,6 +580,11 @@ export const DELETENotes = withErrorHandling(
         | undefined;
       if (!existing) {
         await releaseDb(db);
+        console.warn("[DELETE /api/tasks/notes] task not found", {
+          taskId,
+          taskNumber,
+          noteId,
+        });
         throw notFound(
           isNaN(taskId) || taskId <= 0
             ? `Task with number ${taskNumber} not found`
@@ -580,6 +598,11 @@ export const DELETENotes = withErrorHandling(
 
       if (noteIndex === -1) {
         await releaseDb(db);
+        console.warn("[DELETE /api/tasks/notes] note not found", {
+          taskId: existing.id,
+          taskNumber: existing.task_number,
+          noteId,
+        });
         throw notFound(`Note with id ${noteId} not found`);
       }
 

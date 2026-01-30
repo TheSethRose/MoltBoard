@@ -161,9 +161,17 @@ export function WorkNotes({
 
       if (!res.ok) {
         const error = await res.json();
+        console.warn("[WorkNotes] delete note failed", {
+          status: res.status,
+          error,
+          taskId,
+          taskNumber,
+          noteId: note.id,
+        });
         throw new Error(error.message || "Failed to delete note");
       }
     } catch (err) {
+      console.warn("[WorkNotes] delete note error", err);
       setDeleteError(
         err instanceof Error ? err.message : "Failed to delete note",
       );
